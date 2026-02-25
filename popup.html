@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Настройки</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            width: 280px;
+            padding: 15px;
+            margin: 0;
+            background-color: #f9f9f9;
+        }
+        h3 {
+            margin-top: 0;
+            font-size: 16px;
+            color: #333;
+        }
+        .setting-row {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+        input[type="checkbox"] {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        label {
+            cursor: pointer;
+            font-size: 14px;
+            color: #444;
+        }
+    </style>
+</head>
+<body>
+    <h3>Настройки скрытия</h3>
+    
+    <div class="setting-row">
+        <input type="checkbox" id="toggleJams">
+        <label for="toggleJams">Скрывать «Джемы» (везде)</label>
+    </div>
+    
+    <div class="setting-row">
+        <input type="checkbox" id="toggleShortsHome">
+        <label for="toggleShortsHome">Скрывать Shorts на Главной</label>
+    </div>
+    
+    <div class="setting-row">
+        <input type="checkbox" id="toggleShortsSearch">
+        <label for="toggleShortsSearch">Скрывать Shorts в Поиске</label>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
