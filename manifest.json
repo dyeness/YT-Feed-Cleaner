@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Jam Hider",
+  "version": "1.0",
+  "description": "Скрывает автогенерируемые плейлисты 'Джем' (Mixes) на YouTube.",
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
