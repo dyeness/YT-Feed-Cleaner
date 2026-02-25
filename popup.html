@@ -8,7 +8,7 @@
 <body>
     <div class="container">
         <h3 data-i18n="settingsTitle">Settings</h3>
-        
+
         <div class="setting-row">
             <input type="checkbox" id="toggleJams">
             <label for="toggleJams" data-i18n="optHideJams">Hide Mixes</label>
@@ -27,6 +27,11 @@
         <div class="setting-row">
             <input type="checkbox" id="toggleWatched">
             <label for="toggleWatched" data-i18n="optHideWatched">Hide watched</label>
+        </div>
+
+        <div class="setting-column" id="thresholdContainer">
+            <label id="thresholdLabel" data-i18n="lblWatchThreshold">Watch threshold: 70%</label>
+            <input type="range" id="watchThreshold" min="10" max="100" step="5" value="70">
         </div>
 
         <div class="setting-column">

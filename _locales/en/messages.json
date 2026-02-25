@@ -13,6 +13,19 @@
   "val6Months": { "message": "Older than 6 months" },
   "val1Year": { "message": "Older than 1 year" },
   "githubLink": { "message": "Source code on GitHub" },
-  "updateMsg": { "message": "New version available on GitHub!" }
+  "updateMsg": { "message": "New version available on GitHub!" },
+"lblWatchThreshold": {
+    "message": "Watch threshold: $VALUE$%",
+    "placeholders": {
+      "value": { "content": "$1" }
+    }
+  },
+  "statsHidden": {
+    "message": "Elements hidden: $COUNT$",
+    "placeholders": {
+      "count": { "content": "$1" }
+    }
+  },
+  "valThreshold": { "message": "Threshold" }
   
 }
