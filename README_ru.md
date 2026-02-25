@@ -18,4 +18,4 @@
 
 1. Скачайте архив с проектом или клонируйте репозиторий:
    ```bash
-   git clone [https://github.com/YOUR_USERNAME/YOUR_REPO.git](https://github.com/YOUR_USERNAME/YOUR_REPO.git)
+   git clone [https://github.com/dyeness/YT-Feed-Cleaner.git](https://github.com/dyeness/YT-Feed-Cleaner.git)

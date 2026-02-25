@@ -20,4 +20,4 @@ Currently, the extension is installed in developer mode directly from the source
 
 1. Download the project archive or clone the repository:
    ```bash
-   git clone [https://github.com/YOUR_USERNAME/YOUR_REPO.git](https://github.com/YOUR_USERNAME/YOUR_REPO.git)
+   git clone [https://github.com/dyeness/YT-Feed-Cleaner.git](https://github.com/dyeness/YT-Feed-Cleaner.git)
