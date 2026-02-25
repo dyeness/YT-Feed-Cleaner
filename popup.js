@@ -50,13 +50,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const closeBtn = document.createElement('button');
             closeBtn.className = 'btn-update-close';
             closeBtn.textContent = "OK";
-            closeBtn.onclick = (e) => {
-                e.stopPropagation();
-                chrome.storage.local.set({ 
-                    updateAvailable: false, 
-                    lastKnownSha: settings.newSha 
-                }, () => location.reload());
-            };
+closeBtn.onclick = (e) => {
+    e.stopPropagation();
+    // Просто выключаем флаг обновления до следующего изменения версии в манифесте
+    chrome.storage.local.set({ 
+        updateAvailable: false 
+    }, () => location.reload());
+};
 
             updateDiv.appendChild(updateText);
             updateDiv.appendChild(closeBtn);

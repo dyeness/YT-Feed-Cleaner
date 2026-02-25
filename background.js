@@ -1,13 +1,11 @@
 const GITHUB_REPO = "dyeness/YT-Feed-Cleaner";
-const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/commits/main`;
+const GITHUB_RAW_MANIFEST = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/manifest.json`;
 
-// Проверка при установке и запуск таймера
 chrome.runtime.onInstalled.addListener(() => {
-    chrome.alarms.create("checkUpdate", { periodInMinutes: 360 }); // Раз в 6 часов
+    chrome.alarms.create("checkUpdate", { periodInMinutes: 360 });
     checkForUpdates();
 });
 
-// Слушатель будильника
 chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === "checkUpdate") {
         checkForUpdates();
@@ -16,25 +14,38 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 async function checkForUpdates() {
     try {
-        const response = await fetch(GITHUB_API_URL);
+        // Получаем манифест из репозитория
+        const response = await fetch(GITHUB_RAW_MANIFEST);
         if (!response.ok) return;
+        const remoteManifest = await response.json();
+        
+        // Получаем версию текущего установленного плагина
+        const localVersion = chrome.runtime.getManifest().version;
 
-        const data = await response.json();
-        const latestSha = data.sha;
-
-        chrome.storage.local.get(["lastKnownSha"], (result) => {
-            if (result.lastKnownSha && result.lastKnownSha !== latestSha) {
-                // Если SHA отличается от сохраненного, значит есть обновление
-                chrome.storage.local.set({ 
-                    updateAvailable: true, 
-                    newSha: latestSha 
-                });
-            } else if (!result.lastKnownSha) {
-                // Первая инициализация
-                chrome.storage.local.set({ lastKnownSha: latestSha });
-            }
-        });
+        // Сравниваем версии (например, "4.1" < "4.2")
+        if (isNewerVersion(localVersion, remoteManifest.version)) {
+            chrome.storage.local.set({ 
+                updateAvailable: true, 
+                newVersion: remoteManifest.version 
+            });
+        } else {
+            chrome.storage.local.set({ updateAvailable: false });
+        }
     } catch (error) {
         console.error("Update check failed:", error);
     }
+}
+
+// Функция для корректного сравнения строк версий
+function isNewerVersion(local, remote) {
+    const localParts = local.split('.').map(Number);
+    const remoteParts = remote.split('.').map(Number);
+    
+    for (let i = 0; i < Math.max(localParts.length, remoteParts.length); i++) {
+        const localPart = localParts[i] || 0;
+        const remotePart = remoteParts[i] || 0;
+        if (remotePart > localPart) return true;
+        if (remotePart < localPart) return false;
+    }
+    return false;
 }
