@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Автоматическая локализация интерфейса
+    const repoUrl = "https://github.com/dyeness/YT-Feed-Cleaner";
+
+    // 1. Локализация интерфейса (RU/EN)
     function localizeUI() {
         document.querySelectorAll('[data-i18n]').forEach(element => {
             const messageKey = element.getAttribute('data-i18n');
@@ -9,33 +11,68 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
     localizeUI();
 
+    // 2. Инициализация элементов управления
     const toggleJams = document.getElementById('toggleJams');
     const toggleShortsHome = document.getElementById('toggleShortsHome');
     const toggleShortsSearch = document.getElementById('toggleShortsSearch');
     const toggleWatched = document.getElementById('toggleWatched');
     const oldVideoThreshold = document.getElementById('oldVideoThreshold');
-    const repoUrl = "https://github.com/dyeness/YT-Feed-Cleaner";
 
+    // 3. Загрузка настроек и логика уведомлений
     chrome.storage.local.get({
         hideJams: true,
         hideShortsHome: true,
         hideShortsSearch: true,
         hideWatched: false,
-        oldVideoThreshold: "0"
+        oldVideoThreshold: "0",
+        updateAvailable: false,
+        newSha: ""
     }, (settings) => {
+        // Проставляем сохраненные галочки
         toggleJams.checked = settings.hideJams;
         toggleShortsHome.checked = settings.hideShortsHome;
         toggleShortsSearch.checked = settings.hideShortsSearch;
         toggleWatched.checked = settings.hideWatched;
         oldVideoThreshold.value = settings.oldVideoThreshold;
-    });
-    updateDiv.onclick = () => {
-    window.open(repoUrl, '_blank');
-};
 
+        // Если найдено обновление — создаем баннер ВНУТРИ этого блока
+        if (settings.updateAvailable) {
+            const container = document.querySelector('.container');
+            if (container) {
+                const updateDiv = document.createElement('div');
+                updateDiv.className = 'update-banner';
+                
+                // Текст уведомления
+                const updateText = document.createElement('span');
+                updateText.textContent = chrome.i18n.getMessage("updateMsg") || "New version available on GitHub!";
+                updateText.style.cursor = "pointer";
+                updateText.style.flex = "1";
+                
+                // Клик по тексту открывает GitHub
+                updateText.onclick = () => window.open(repoUrl, '_blank');
+
+                // Кнопка закрытия баннера
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'btn-small';
+                closeBtn.textContent = "OK";
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation(); // Останавливаем всплытие, чтобы не открылся URL
+                    chrome.storage.local.set({ 
+                        updateAvailable: false, 
+                        lastKnownSha: settings.newSha 
+                    }, () => location.reload());
+                };
+
+                updateDiv.appendChild(updateText);
+                updateDiv.appendChild(closeBtn);
+                container.prepend(updateDiv);
+            }
+        }
+    });
+
+    // 4. Функция сохранения настроек при изменении пользователем
     function saveSettings() {
         chrome.storage.local.set({
             hideJams: toggleJams.checked,
@@ -46,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Навешиваем слушатели на все элементы
     toggleJams.addEventListener('change', saveSettings);
     toggleShortsHome.addEventListener('change', saveSettings);
     toggleShortsSearch.addEventListener('change', saveSettings);
