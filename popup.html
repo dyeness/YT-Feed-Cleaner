@@ -3,80 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <title>Settings</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            width: 320px;
-            padding: 15px;
-            margin: 0;
-            background-color: #f9f9f9;
-        }
-        h3 {
-            margin-top: 0;
-            font-size: 16px;
-            color: #333;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 8px;
-        }
-        .setting-row {
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-        }
-        .setting-column {
-            margin-bottom: 12px;
-            display: flex;
-            flex-direction: column;
-        }
-        input[type="checkbox"] {
-            margin-right: 10px;
-            cursor: pointer;
-        }
-        label {
-            cursor: pointer;
-            font-size: 14px;
-            color: #444;
-        }
-        select {
-            margin-top: 5px;
-            padding: 5px;
-            font-size: 13px;
-            cursor: pointer;
-        }
-    </style>
+    <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-    <h3 data-i18n="settingsTitle">Settings</h3>
-    
-    <div class="setting-row">
-        <input type="checkbox" id="toggleJams">
-        <label for="toggleJams" data-i18n="optHideJams">Hide Mixes</label>
-    </div>
-    
-    <div class="setting-row">
-        <input type="checkbox" id="toggleShortsHome">
-        <label for="toggleShortsHome" data-i18n="optHideShortsHome">Hide Shorts on Home</label>
-    </div>
-    
-    <div class="setting-row">
-        <input type="checkbox" id="toggleShortsSearch">
-        <label for="toggleShortsSearch" data-i18n="optHideShortsSearch">Hide Shorts in Search</label>
-    </div>
+    <div class="container">
+        <h3 data-i18n="settingsTitle">Settings</h3>
+        
+        <div class="setting-row">
+            <input type="checkbox" id="toggleJams">
+            <label for="toggleJams" data-i18n="optHideJams">Hide Mixes</label>
+        </div>
+        
+        <div class="setting-row">
+            <input type="checkbox" id="toggleShortsHome">
+            <label for="toggleShortsHome" data-i18n="optHideShortsHome">Hide Shorts on Home</label>
+        </div>
+        
+        <div class="setting-row">
+            <input type="checkbox" id="toggleShortsSearch">
+            <label for="toggleShortsSearch" data-i18n="optHideShortsSearch">Hide Shorts in Search</label>
+        </div>
 
-    <div class="setting-row">
-        <input type="checkbox" id="toggleWatched">
-        <label for="toggleWatched" data-i18n="optHideWatched">Hide watched</label>
-    </div>
+        <div class="setting-row">
+            <input type="checkbox" id="toggleWatched">
+            <label for="toggleWatched" data-i18n="optHideWatched">Hide watched</label>
+        </div>
 
-    <div class="setting-column">
-        <label for="oldVideoThreshold" data-i18n="lblOldVideo">Hide old videos:</label>
-        <select id="oldVideoThreshold">
-            <option value="0" data-i18n="valNotHide">Do not hide</option>
-            <option value="7" data-i18n="val1Week">Older than 1 week</option>
-            <option value="30" data-i18n="val1Month">Older than 1 month</option>
-            <option value="180" data-i18n="val6Months">Older than 6 months</option>
-            <option value="365" data-i18n="val1Year">Older than 1 year</option>
-        </select>
+        <div class="setting-column">
+            <label for="oldVideoThreshold" data-i18n="lblOldVideo">Hide old videos:</label>
+            <select id="oldVideoThreshold">
+                <option value="0" data-i18n="valNotHide">Do not hide</option>
+                <option value="7" data-i18n="val1Week">Older than 1 week</option>
+                <option value="30" data-i18n="val1Month">Older than 1 month</option>
+                <option value="180" data-i18n="val6Months">Older than 6 months</option>
+                <option value="365" data-i18n="val1Year">Older than 1 year</option>
+            </select>
+        </div>
+
+        <div class="footer">
+            <a href="https://github.com/dyeness/YT-Feed-Cleaner" target="_blank" data-i18n="githubLink">Source code on GitHub</a>
+        </div>
     </div>
 
     <script src="popup.js"></script>

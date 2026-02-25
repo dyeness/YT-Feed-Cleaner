@@ -4,6 +4,7 @@
   "version": "4.0",
   "description": "__MSG_extDesc__",
   "default_locale": "en",
+  "homepage_url": "https://github.com/dyeness/YT-Feed-Cleaner",
   "permissions": [
     "storage"
   ],

@@ -11,5 +11,6 @@
   "val1Week": { "message": "Older than 1 week" },
   "val1Month": { "message": "Older than 1 month" },
   "val6Months": { "message": "Older than 6 months" },
-  "val1Year": { "message": "Older than 1 year" }
+  "val1Year": { "message": "Older than 1 year" },
+  "githubLink": { "message": "Source code on GitHub" }
 }

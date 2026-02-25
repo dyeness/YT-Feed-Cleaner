@@ -11,5 +11,6 @@
   "val1Week": { "message": "Старше 1 недели" },
   "val1Month": { "message": "Старше 1 месяца" },
   "val6Months": { "message": "Старше 6 месяцев" },
-  "val1Year": { "message": "Старше 1 года" }
+  "val1Year": { "message": "Старше 1 года" },
+  "githubLink": { "message": "Исходный код на GitHub" }
 }
