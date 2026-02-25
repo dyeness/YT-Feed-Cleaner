@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>Настройки</title>
+    <title>Settings</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -46,36 +46,36 @@
     </style>
 </head>
 <body>
-    <h3>Настройки скрытия</h3>
+    <h3 data-i18n="settingsTitle">Settings</h3>
     
     <div class="setting-row">
         <input type="checkbox" id="toggleJams">
-        <label for="toggleJams">Скрывать «Джемы» (везде)</label>
+        <label for="toggleJams" data-i18n="optHideJams">Hide Mixes</label>
     </div>
     
     <div class="setting-row">
         <input type="checkbox" id="toggleShortsHome">
-        <label for="toggleShortsHome">Скрывать Shorts на Главной</label>
+        <label for="toggleShortsHome" data-i18n="optHideShortsHome">Hide Shorts on Home</label>
     </div>
     
     <div class="setting-row">
         <input type="checkbox" id="toggleShortsSearch">
-        <label for="toggleShortsSearch">Скрывать Shorts в Поиске</label>
+        <label for="toggleShortsSearch" data-i18n="optHideShortsSearch">Hide Shorts in Search</label>
     </div>
 
     <div class="setting-row">
         <input type="checkbox" id="toggleWatched">
-        <label for="toggleWatched">Скрывать просмотренные (на Главной)</label>
+        <label for="toggleWatched" data-i18n="optHideWatched">Hide watched</label>
     </div>
 
     <div class="setting-column">
-        <label for="oldVideoThreshold">Скрывать старые видео (на Главной):</label>
+        <label for="oldVideoThreshold" data-i18n="lblOldVideo">Hide old videos:</label>
         <select id="oldVideoThreshold">
-            <option value="0">Не скрывать</option>
-            <option value="7">Старше 1 недели</option>
-            <option value="30">Старше 1 месяца</option>
-            <option value="180">Старше 6 месяцев</option>
-            <option value="365">Старше 1 года</option>
+            <option value="0" data-i18n="valNotHide">Do not hide</option>
+            <option value="7" data-i18n="val1Week">Older than 1 week</option>
+            <option value="30" data-i18n="val1Month">Older than 1 month</option>
+            <option value="180" data-i18n="val6Months">Older than 6 months</option>
+            <option value="365" data-i18n="val1Year">Older than 1 year</option>
         </select>
     </div>
 

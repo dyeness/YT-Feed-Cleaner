@@ -1,0 +1,15 @@
+{
+  "extName": { "message": "YouTube Feed Cleaner" },
+  "extDesc": { "message": "Hides Mixes, Shorts, watched and old videos." },
+  "settingsTitle": { "message": "Hiding Settings" },
+  "optHideJams": { "message": "Hide Mixes (everywhere)" },
+  "optHideShortsHome": { "message": "Hide Shorts on Home" },
+  "optHideShortsSearch": { "message": "Hide Shorts in Search" },
+  "optHideWatched": { "message": "Hide watched (on Home)" },
+  "lblOldVideo": { "message": "Hide old videos (on Home):" },
+  "valNotHide": { "message": "Do not hide" },
+  "val1Week": { "message": "Older than 1 week" },
+  "val1Month": { "message": "Older than 1 month" },
+  "val6Months": { "message": "Older than 6 months" },
+  "val1Year": { "message": "Older than 1 year" }
+}

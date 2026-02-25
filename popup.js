@@ -1,11 +1,23 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Автоматическая локализация интерфейса
+    function localizeUI() {
+        document.querySelectorAll('[data-i18n]').forEach(element => {
+            const messageKey = element.getAttribute('data-i18n');
+            const translatedMessage = chrome.i18n.getMessage(messageKey);
+            if (translatedMessage) {
+                element.textContent = translatedMessage;
+            }
+        });
+    }
+    
+    localizeUI();
+
     const toggleJams = document.getElementById('toggleJams');
     const toggleShortsHome = document.getElementById('toggleShortsHome');
     const toggleShortsSearch = document.getElementById('toggleShortsSearch');
     const toggleWatched = document.getElementById('toggleWatched');
     const oldVideoThreshold = document.getElementById('oldVideoThreshold');
 
-    // Загрузка сохраненных настроек
     chrome.storage.local.get({
         hideJams: true,
         hideShortsHome: true,
@@ -20,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
         oldVideoThreshold.value = settings.oldVideoThreshold;
     });
 
-    // Функция сохранения настроек
     function saveSettings() {
         chrome.storage.local.set({
             hideJams: toggleJams.checked,
@@ -31,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Слушатели событий
     toggleJams.addEventListener('change', saveSettings);
     toggleShortsHome.addEventListener('change', saveSettings);
     toggleShortsSearch.addEventListener('change', saveSettings);
