@@ -1,13 +1,18 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "4.0",
+  "version": "4.1",
   "description": "__MSG_extDesc__",
   "default_locale": "en",
   "homepage_url": "https://github.com/dyeness/YT-Feed-Cleaner",
   "permissions": [
-    "storage"
+    "storage",
+    "alarms",
+    "notifications"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html"
   },

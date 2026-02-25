@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleShortsSearch = document.getElementById('toggleShortsSearch');
     const toggleWatched = document.getElementById('toggleWatched');
     const oldVideoThreshold = document.getElementById('oldVideoThreshold');
+    const repoUrl = "https://github.com/dyeness/YT-Feed-Cleaner";
 
     chrome.storage.local.get({
         hideJams: true,
@@ -31,6 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleWatched.checked = settings.hideWatched;
         oldVideoThreshold.value = settings.oldVideoThreshold;
     });
+    updateDiv.onclick = () => {
+    window.open(repoUrl, '_blank');
+};
 
     function saveSettings() {
         chrome.storage.local.set({
