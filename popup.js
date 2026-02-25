@@ -19,7 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleShortsSearch = document.getElementById('toggleShortsSearch');
     const toggleWatched = document.getElementById('toggleWatched');
     const oldVideoThreshold = document.getElementById('oldVideoThreshold');
-
+    const footer = document.querySelector('.footer');
+    
     // 3. Загрузка настроек и логика уведомлений
     chrome.storage.local.get({
         hideJams: true,
@@ -39,36 +40,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Если найдено обновление — создаем баннер ВНУТРИ этого блока
         if (settings.updateAvailable) {
-            const container = document.querySelector('.container');
-            if (container) {
-                const updateDiv = document.createElement('div');
-                updateDiv.className = 'update-banner';
-                
-                // Текст уведомления
-                const updateText = document.createElement('span');
-                updateText.textContent = chrome.i18n.getMessage("updateMsg") || "New version available on GitHub!";
-                updateText.style.cursor = "pointer";
-                updateText.style.flex = "1";
-                
-                // Клик по тексту открывает GitHub
-                updateText.onclick = () => window.open(repoUrl, '_blank');
+            const updateDiv = document.createElement('div');
+            updateDiv.className = 'update-banner';
+            
+            const updateText = document.createElement('span');
+            updateText.textContent = chrome.i18n.getMessage("updateMsg") || "New version available!";
+            updateText.onclick = () => window.open(repoUrl, '_blank');
 
-                // Кнопка закрытия баннера
-                const closeBtn = document.createElement('button');
-                closeBtn.className = 'btn-small';
-                closeBtn.textContent = "OK";
-                closeBtn.onclick = (e) => {
-                    e.stopPropagation(); // Останавливаем всплытие, чтобы не открылся URL
-                    chrome.storage.local.set({ 
-                        updateAvailable: false, 
-                        lastKnownSha: settings.newSha 
-                    }, () => location.reload());
-                };
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'btn-update-close';
+            closeBtn.textContent = "OK";
+            closeBtn.onclick = (e) => {
+                e.stopPropagation();
+                chrome.storage.local.set({ 
+                    updateAvailable: false, 
+                    lastKnownSha: settings.newSha 
+                }, () => location.reload());
+            };
 
-                updateDiv.appendChild(updateText);
-                updateDiv.appendChild(closeBtn);
-                container.prepend(updateDiv);
-            }
+            updateDiv.appendChild(updateText);
+            updateDiv.appendChild(closeBtn);
+            // Вставляем ПЕРЕД футером, чтобы уведомление было внизу основного контента
+            footer.parentNode.insertBefore(updateDiv, footer);
         }
     });
 

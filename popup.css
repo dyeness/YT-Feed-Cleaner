@@ -92,3 +92,45 @@ select:focus {
     color: #ff7b7b;
     text-shadow: 0 0 8px rgba(211, 47, 47, 0.4); /* Эффект свечения */
 }
+
+/* Баннер обновления внизу */
+.update-banner {
+    background-color: #2d2d2d;
+    border: 1px solid #d32f2f;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.update-banner span {
+    font-size: 12px;
+    color: #ff7b7b;
+    cursor: pointer;
+    font-weight: 500;
+    text-decoration: underline;
+}
+
+.btn-update-close {
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: background 0.2s;
+}
+
+.btn-update-close:hover {
+    background-color: #b71c1c;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
