@@ -38,15 +38,49 @@ function restoreAllElements() {
 function getAgeInDays(text) {
     if (!text) return 0;
     const lowerText = text.trim().toLowerCase();
-    let value = 1; 
-    const numMatch = lowerText.match(/\d+/);
-    if (numMatch) value = parseInt(numMatch[0], 10);
+    if (!lowerText.includes('назад') && !lowerText.includes('ago')) return 0;
 
-    if (lowerText.includes('день') || lowerText.includes('дней') || lowerText.includes('дня') || lowerText.includes('day')) return value;
-    if (lowerText.includes('недел') || lowerText.includes('week')) return value * 7;
-    if (lowerText.includes('месяц') || lowerText.includes('month')) return value * 30;
-    if (lowerText.includes('год') || lowerText.includes('лет') || lowerText.includes('года') || lowerText.includes('year')) return value * 365;
-    return 0; 
+    const valueMatch = lowerText.match(/\d+|\ba\b|\ban\b|\bone\b|\bодин\b|\bодна\b/);
+    const value = valueMatch && /^\d+$/.test(valueMatch[0]) ? parseInt(valueMatch[0], 10) : 1;
+
+    if (/день|дня|дней|\bday\b|\bdays\b/.test(lowerText)) return value;
+    if (/недел|\bweek\b|\bweeks\b|\bwk\b|\bwks\b/.test(lowerText)) return value * 7;
+    if (/месяц|месяца|месяцев|\bmonth\b|\bmonths\b|\bmo\b|\bmos\b/.test(lowerText)) return value * 30;
+    if (/год|года|лет|\byear\b|\byears\b|\byr\b|\byrs\b/.test(lowerText)) return value * 365;
+    return 0;
+}
+
+function getAgeTextCandidates(card) {
+    const candidates = [];
+    const selectors = [
+        '#metadata-line',
+        'ytd-video-meta-block',
+        'yt-content-metadata-view-model',
+        'span.inline-metadata-item',
+        'yt-formatted-string',
+        'span',
+        '[aria-label]',
+        '[title]'
+    ];
+
+    selectors.forEach(selector => {
+        card.querySelectorAll(selector).forEach(el => {
+            candidates.push(el.textContent);
+            candidates.push(el.getAttribute('aria-label'));
+            candidates.push(el.getAttribute('title'));
+        });
+    });
+
+    candidates.push(card.getAttribute('aria-label'));
+    return candidates.filter(Boolean);
+}
+
+function getCardAgeInDays(card) {
+    for (let text of getAgeTextCandidates(card)) {
+        const age = getAgeInDays(text);
+        if (age > 0) return age;
+    }
+    return 0;
 }
 
 function processDOM() {
@@ -72,7 +106,9 @@ function processDOM() {
 
     // 2. Скрытие Shorts
     if (currentSettings.hideShortsHome && isHome) {
-        document.querySelectorAll('ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts])').forEach(shelf => hideElement(shelf, 'shorts-home'));
+        document.querySelectorAll('ytd-rich-section-renderer').forEach(shelf => {
+            if (shelf.querySelector('ytd-rich-shelf-renderer[is-shorts]')) hideElement(shelf, 'shorts-home');
+        });
     }
     if (currentSettings.hideShortsSearch && isSearch) {
         document.querySelectorAll('ytd-reel-shelf-renderer').forEach(shelf => hideElement(shelf, 'shorts-search'));
@@ -98,15 +134,8 @@ function processDOM() {
 
             // Проверка возраста видео
             if (thresholdDays > 0) {
-                const metadataSpans = card.querySelectorAll('span.inline-metadata-item, #metadata-line span, span');
-                for (let span of metadataSpans) {
-                    const text = span.textContent.trim().toLowerCase();
-                    if (text.includes('назад') || text.includes('ago')) {
-                        if (getAgeInDays(text) >= thresholdDays) {
-                            hideElement(card, 'old-video');
-                            break; 
-                        }
-                    }
+                if (getCardAgeInDays(card) >= thresholdDays) {
+                    hideElement(card, 'old-video');
                 }
             }
         });
