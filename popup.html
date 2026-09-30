@@ -1,55 +1,98 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Settings</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>YouTube Feed Cleaner</title>
     <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-    <div class="container">
-        <h3 data-i18n="settingsTitle">Settings</h3>
-
-        <div class="setting-row">
-            <input type="checkbox" id="toggleJams">
-            <label for="toggleJams" data-i18n="optHideJams">Hide Mixes</label>
+<main>
+    <header><img src="icons/icon.svg" alt="" width="48" height="48"><div><h1 data-i18n="appTitle">YouTube Cleaner</h1><span id="version" class="muted"></span></div></header>
+    <form id="settingsForm">
+    <fieldset id="controls" disabled>
+        <label class="master"><span data-i18n="enabled">Enable filtering</span><input type="checkbox" id="enabled"></label>
+        <nav class="tabs" role="tablist" aria-label="Feed Cleaner">
+            <button type="button" id="filtersTab" role="tab" aria-selected="true" aria-controls="filtersPanel" data-i18n="filtersTab">Filters</button>
+            <button type="button" id="updatesTab" role="tab" aria-selected="false" aria-controls="updatesPanel" tabindex="-1" data-i18n="updatesTab">Updates</button>
+            <button type="button" id="appearanceTab" role="tab" aria-selected="false" aria-controls="appearancePanel" tabindex="-1" data-i18n="appearanceTab">Appearance</button>
+        </nav>
+        <div id="filtersPanel" role="tabpanel" aria-labelledby="filtersTab">
+        <section class="status" aria-live="polite"><strong id="statsText"></strong><button type="button" id="preview" data-i18n="showHidden">Show hidden temporarily</button><details id="reasons"><summary data-i18n="whyHidden">Why were these hidden?</summary><div id="statsDetails"></div></details></section>
+        <section>
+            <h2 data-i18n="contentTypes">Content types</h2>
+            <label class="row"><input type="checkbox" id="hideJams"><span data-i18n="optHideJams">Hide Mixes</span></label>
+            <label class="row"><input type="checkbox" id="hideShortsHome"><span data-i18n="optHideShortsHome">Shorts on Home</span></label>
+            <label class="row"><input type="checkbox" id="hideShortsSearch"><span data-i18n="optHideShortsSearch">Shorts in Search</span></label>
+            <label class="row"><input type="checkbox" id="hideShortsOther"><span data-i18n="shortsOther">Shorts on other pages</span></label>
+        </section>
+        <section>
+            <h2 data-i18n="videoFilters">Video filters</h2>
+            <p class="hint" data-i18n="scopeHint">Apply the filters below to:</p>
+            <div class="scope">
+                <label><input type="checkbox" id="filterHome"><span data-i18n="home">Home</span></label>
+                <label><input type="checkbox" id="filterSearch"><span data-i18n="search">Search</span></label>
+                <label><input type="checkbox" id="filterWatch"><span data-i18n="recommendations">Recommendations</span></label>
+                <label><input type="checkbox" id="filterSubscriptions"><span data-i18n="subscriptions">Subscriptions</span></label>
+            </div>
+            <label class="row"><input type="checkbox" id="hideWatched"><span data-i18n="optHideWatched">Watched videos</span></label>
+            <label class="field" for="watchThreshold"><span id="thresholdLabel"></span><input type="range" id="watchThreshold" min="1" max="100" step="1"></label>
+            <label class="field"><span data-i18n="ageDays">Hide older than (days; 0 = off)</span><input type="number" id="oldVideoThreshold" min="0" max="100000" step="1"></label>
+            <div class="two-columns">
+                <label class="field"><span data-i18n="minDuration">Minimum minutes (0 = off)</span><input type="number" id="minDuration" min="0" max="100000" step="0.1"></label>
+                <label class="field"><span data-i18n="maxDuration">Maximum minutes (0 = off)</span><input type="number" id="maxDuration" min="0" max="100000" step="0.1"></label>
+            </div>
+            <label class="row"><input type="checkbox" id="hideLive"><span data-i18n="hideLive">Live streams</span></label>
+            <label class="row"><input type="checkbox" id="hideUpcoming"><span data-i18n="hideUpcoming">Upcoming premieres</span></label>
+            <label class="row"><input type="checkbox" id="hidePlaylists"><span data-i18n="hidePlaylists">Regular playlists</span></label>
+            <details><summary data-i18n="customRules">Titles and channels</summary>
+                <label class="field"><span data-i18n="titleKeywords">Hide titles containing</span><textarea id="titleKeywords" rows="3" maxlength="10000"></textarea></label>
+                <p class="hint" data-i18n="keywordsHint">One phrase per line, case-insensitive. Plain text, not regular expressions.</p>
+                <label class="field"><span data-i18n="blockedChannels">Hide channels</span><textarea id="blockedChannels" rows="3" maxlength="10000"></textarea></label>
+                <label class="field"><span data-i18n="allowedChannels">Never hide channels</span><textarea id="allowedChannels" rows="3" maxlength="10000"></textarea></label>
+                <p class="hint" data-i18n="channelsHint">One exact channel name, @handle or channel URL per line. Exceptions override every filter; unknown channels cannot match.</p>
+            </details>
+            <p class="hint" data-i18n="safeHint">Unknown metadata never triggers a filter. Age: English/Russian publication labels only, with conservative month estimates.</p>
+        </section>
         </div>
-        
-        <div class="setting-row">
-            <input type="checkbox" id="toggleShortsHome">
-            <label for="toggleShortsHome" data-i18n="optHideShortsHome">Hide Shorts on Home</label>
-        </div>
-        
-        <div class="setting-row">
-            <input type="checkbox" id="toggleShortsSearch">
-            <label for="toggleShortsSearch" data-i18n="optHideShortsSearch">Hide Shorts in Search</label>
-        </div>
-
-        <div class="setting-row">
-            <input type="checkbox" id="toggleWatched">
-            <label for="toggleWatched" data-i18n="optHideWatched">Hide watched</label>
-        </div>
-
-        <div class="setting-column" id="thresholdContainer">
-            <label id="thresholdLabel" data-i18n="lblWatchThreshold">Watch threshold: 70%</label>
-            <input type="range" id="watchThreshold" min="10" max="100" step="5" value="70">
-        </div>
-
-        <div class="setting-column">
-            <label for="oldVideoThreshold" data-i18n="lblOldVideo">Hide old videos:</label>
-            <select id="oldVideoThreshold">
-                <option value="0" data-i18n="valNotHide">Do not hide</option>
-                <option value="7" data-i18n="val1Week">Older than 1 week</option>
-                <option value="30" data-i18n="val1Month">Older than 1 month</option>
-                <option value="180" data-i18n="val6Months">Older than 6 months</option>
-                <option value="365" data-i18n="val1Year">Older than 1 year</option>
-            </select>
-        </div>
-
-        <div class="footer">
-            <a href="https://github.com/dyeness/YT-Feed-Cleaner" target="_blank" data-i18n="githubLink">Source code on GitHub</a>
-        </div>
-    </div>
-
-    <script src="popup.js"></script>
+        <section id="updatesPanel" role="tabpanel" aria-labelledby="updatesTab" hidden>
+            <h2 data-i18n="updates">GitHub updates</h2>
+            <label class="row"><input type="checkbox" id="updateNotifications"><span data-i18n="notifications">Desktop notifications</span></label>
+            <label class="row"><input type="checkbox" id="trackCommits"><span data-i18n="trackCommits">Also notify about new commits</span></label>
+            <div id="updateItems" aria-live="polite"></div>
+            <p id="updateStatus" class="hint"></p>
+            <div class="buttons"><button type="button" id="checkUpdates" data-i18n="checkNow">Check now</button><button type="button" id="dismissUpdates" data-i18n="dismissUpdates" hidden>Mark as seen</button></div>
+            <p class="hint" data-i18n="manualUpdate">Checks every 6 hours. Updates are installed manually; a commit is not a released version.</p>
+        </section>
+        <section id="appearancePanel" role="tabpanel" aria-labelledby="appearanceTab" hidden>
+            <h2 data-i18n="appearanceTitle">Language and appearance</h2>
+            <label class="field"><span data-i18n="languageLabel">Interface language</span><select id="language">
+                <option value="auto" data-i18n="languageAuto">Automatic (browser language)</option>
+                <option value="ru" data-i18n="languageRussian">Русский (Russian)</option>
+                <option value="en" data-i18n="languageEnglish">English</option>
+            </select></label>
+            <label class="field"><span data-i18n="textSizeLabel">Text size</span><select id="textSize">
+                <option value="normal" data-i18n="textNormal">Standard — 16 px</option>
+                <option value="large" data-i18n="textLarge">Large — 18 px</option>
+                <option value="extra" data-i18n="textExtra">Extra large — 20 px</option>
+            </select></label>
+            <p class="hint" data-i18n="appearanceHint">Language changes immediately and applies to notifications.</p>
+            <label class="row"><input type="checkbox" id="animateHiding"><span data-i18n="animateHidingLabel">Disintegrate videos when hiding</span></label>
+            <label class="field"><span data-i18n="animationSpeedLabel">Disintegration speed</span><select id="animationSpeed">
+                <option value="fast" data-i18n="animationFast">Fast — 0.45 s</option>
+                <option value="normal" data-i18n="animationNormal">Normal — 0.8 s</option>
+                <option value="slow" data-i18n="animationSlow">Slow — 1.2 s</option>
+            </select></label>
+            <label class="row"><input type="checkbox" id="respectReducedMotion"><span data-i18n="respectReducedMotionLabel">Respect reduced motion in the OS</span></label>
+            <p class="hint" data-i18n="animationHint">Animation is off by default. Disabling a filter cancels the effect.</p>
+            <p class="hint" data-i18n="motionHint">The effect is skipped when the OS requests reduced motion.</p>
+            <p class="hint" data-i18n="iconHint">The interface uses SVG; Chrome toolbar icons require PNG copies.</p>
+        </section>
+        <footer><a href="https://github.com/dyeness/YT-Feed-Cleaner" target="_blank" rel="noopener noreferrer" data-i18n="githubLink">GitHub</a><button type="button" id="reset" data-i18n="reset">Reset filters</button></footer>
+    </fieldset>
+    </form>
+    <p id="saveStatus" role="status" class="hint"></p>
+</main>
+<script src="shared.js"></script><script src="translations.js"></script><script src="i18n.js"></script><script src="updates.js"></script><script src="popup.js"></script>
 </body>
 </html>

@@ -1,179 +1,45 @@
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    width: 320px;
-    margin: 0;
-    padding: 0;
-    background-color: #1e1e1e; /* Темный фон в стиле Obsidian */
-    color: #dedede; /* Светло-серый текст */
-}
-
-.container {
-    padding: 16px;
-}
-
-h3 {
-    margin-top: 0;
-    font-size: 16px;
-    color: #ffffff;
-    border-bottom: 2px solid #d32f2f; /* Красный акцент */
-    padding-bottom: 10px;
-    margin-bottom: 16px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-}
-
-.setting-row {
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-}
-
-.setting-column {
-    margin-bottom: 14px;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Стилизация чекбоксов */
-input[type="checkbox"] {
-    margin-right: 12px;
-    cursor: pointer;
-    width: 16px;
-    height: 16px;
-    accent-color: #d32f2f; /* Перекрашиваем галочку в красный */
-}
-
-label {
-    cursor: pointer;
-    font-size: 14px;
-    line-height: 1.4;
-    transition: color 0.2s ease;
-}
-
-label:hover {
-    color: #ffffff;
-}
-
-/* Стилизация выпадающего списка */
-select {
-    margin-top: 8px;
-    padding: 8px;
-    font-size: 13px;
-    cursor: pointer;
-    background-color: #2d2d2d;
-    color: #ffffff;
-    border: 1px solid #444;
-    border-radius: 4px;
-    outline: none;
-    transition: border-color 0.2s ease;
-}
-
-select:focus {
-    border-color: #d32f2f; /* Красная рамка при фокусе */
-}
-
-/* Подвал со ссылкой */
-.footer {
-    margin-top: 20px;
-    padding-top: 12px;
-    border-top: 1px solid #333;
-    text-align: center;
-}
-
-.footer a {
-    color: #ff5252; /* Ярко-красная ссылка */
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 500;
-    transition: color 0.2s ease, text-shadow 0.2s ease;
-}
-
-.footer a:hover {
-    color: #ff7b7b;
-    text-shadow: 0 0 8px rgba(211, 47, 47, 0.4); /* Эффект свечения */
-}
-
-/* Баннер обновления внизу */
-.update-banner {
-    background-color: #2d2d2d;
-    border: 1px solid #d32f2f;
-    border-radius: 4px;
-    padding: 8px 12px;
-    margin-top: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    animation: fadeIn 0.3s ease;
-}
-
-.update-banner span {
-    font-size: 12px;
-    color: #ff7b7b;
-    cursor: pointer;
-    font-weight: 500;
-    text-decoration: underline;
-}
-
-.btn-update-close {
-    background-color: #d32f2f;
-    color: white;
-    border: none;
-    border-radius: 3px;
-    padding: 2px 8px;
-    font-size: 11px;
-    cursor: pointer;
-    margin-left: 10px;
-    transition: background 0.2s;
-}
-
-.btn-update-close:hover {
-    background-color: #b71c1c;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Статистика */
-.stats-box {
-    background-color: #2d2d2d;
-    border-left: 3px solid #d32f2f;
-    padding: 10px;
-    margin-bottom: 15px;
-    border-radius: 4px;
-    font-size: 13px;
-    font-weight: 500;
-}
-
-/* Слайдер */
-input[type="range"] {
-    -webkit-appearance: none;
-    width: 100%;
-    background: transparent;
-    margin-top: 10px;
-}
-
-input[type="range"]::-webkit-slider-runnable-track {
-    width: 100%;
-    height: 6px;
-    cursor: pointer;
-    background: #444;
-    border-radius: 3px;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-    height: 16px;
-    width: 16px;
-    border-radius: 50%;
-    background: #d32f2f;
-    cursor: pointer;
-    -webkit-appearance: none;
-    margin-top: -5px;
-    box-shadow: 0 0 5px rgba(0,0,0,0.5);
-}
-
-#thresholdLabel {
-    font-size: 12px;
-    color: #bbb;
-}
+:root { color-scheme: dark; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: #e8edf5; background: #11151d; font-size: 18px; line-height: 1.45; }
+:root[data-text-size=normal] { font-size: 16px; }
+:root[data-text-size=large] { font-size: 18px; }
+:root[data-text-size=extra] { font-size: 20px; }
+* { box-sizing: border-box; }
+body { width: 460px; margin: 0; max-height: 600px; overflow-y: auto; font: inherit; }
+form, fieldset, label { font: inherit; }
+main { padding: 18px; }
+header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+h1 { font-size: 1.4rem; margin: 0 0 3px; letter-spacing: -.5px; line-height: 1.2; }
+h2 { font-size: 1.1rem; margin: 0 0 12px; }
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+section { background: #1b2130; border: 1px solid #2b3548; border-radius: 12px; margin: 12px 0; padding: 16px; }
+.master { display: flex; align-items: center; justify-content: space-between; font-size: 1.05rem; font-weight: 650; gap: 12px; padding: 10px 0; }
+.tabs { display: flex; gap: 6px; padding: 7px 0; position: sticky; top: 0; background: #11151d; z-index: 1; }
+.tabs button { flex: 1; min-width: 0; padding: 9px 5px; font-size: .9rem; }
+.tabs [aria-selected=true] { background: #623143; border-color: #ef5266; }
+.tabs .has-updates::after { content: ' •'; color: #8df0ca; }
+.row { display: flex; align-items: center; gap: 11px; margin: 13px 0; }
+input[type=checkbox] { width: 21px; height: 21px; margin: 0; accent-color: #ef5266; cursor: pointer; flex-shrink: 0; }
+input[type=range] { width: 100%; accent-color: #ef5266; min-height: 28px; }
+.field { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; }
+input[type=number], textarea, select { width: 100%; padding: 10px; background: #111722; color: inherit; border: 1px solid #41506a; border-radius: 6px; font: inherit; }
+textarea { resize: vertical; }
+.two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.scope { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 18px; }
+.scope label { display: flex; align-items: center; gap: 7px; background: #242d3e; padding: 7px 9px; border-radius: 8px; }
+.hint, .muted { color: #bcc8da; font-size: .9rem; line-height: 1.55; }
+.hint { margin: 11px 0; }
+button { font: inherit; background: #303e55; border: 1px solid #4d607d; color: #f2f5fa; border-radius: 7px; padding: 9px 12px; cursor: pointer; }
+input, textarea, select, button { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
+button:hover { background: #405471; }
+button:disabled, select:disabled { cursor: default; opacity: .6; }
+a { color: #ff8898; text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid #ff8898; outline-offset: 3px; }
+summary { cursor: pointer; padding: 9px 0; }
+.status { border-left: 3px solid #ef5266; }
+.status > button { display: block; margin-top: 12px; }
+#statsDetails p { color: #bcc8da; font-size: .9rem; overflow-wrap: anywhere; }
+.update-item { display: block; border: 1px solid #ea586b; background: #382333; border-radius: 7px; padding: 10px; margin: 9px 0; overflow-wrap: anywhere; }
+.buttons, footer { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+footer { padding: 8px 0; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: no-preference) { button { transition: background .15s; } }
