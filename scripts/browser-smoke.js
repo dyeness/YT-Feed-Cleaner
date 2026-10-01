@@ -126,7 +126,10 @@ const video = (id, href, title, extras = '') => `<ytd-rich-item-renderer id="${i
         await popup.locator('#appearanceTab').click();
         await popup.locator('#language').selectOption('ru');
         await popup.waitForFunction(() => document.documentElement.lang === 'ru');
-        assert.equal(await popup.locator('h1').textContent(), 'Очистка YouTube');
+        assert.equal(await popup.locator('h1').textContent(), 'YouTube Feed Cleaner');
+        assert.equal(await popup.title(), 'YouTube Feed Cleaner');
+        assert.equal(await worker.evaluate(() => chrome.runtime.getManifest().name), 'YouTube Feed Cleaner');
+        assert.ok((await worker.evaluate(() => chrome.action.getTitle({}))).startsWith('YouTube Feed Cleaner'));
         assert.equal(await popup.locator('header img').getAttribute('src'), 'icons/icon.svg');
         assert.equal(await popup.evaluate(() => getComputedStyle(document.documentElement).fontSize), '18px');
         assert.equal(await popup.evaluate(() => getComputedStyle(document.querySelector('[data-i18n="languageLabel"]')).fontSize), '18px');
@@ -184,7 +187,7 @@ const video = (id, href, title, extras = '') => `<ytd-rich-item-renderer id="${i
         await popup.screenshot({ path: path.join(root, 'dist', 'appearance-ru-preview.png'), fullPage: true, animations: 'disabled' });
         await popup.locator('#language').selectOption('en');
         await popup.waitForFunction(() => document.documentElement.lang === 'en');
-        assert.equal(await popup.locator('h1').textContent(), 'YouTube Cleaner');
+        assert.equal(await popup.locator('h1').textContent(), 'YouTube Feed Cleaner');
         await popup.screenshot({ path: path.join(root, 'dist', 'appearance-en-preview.png'), fullPage: true, animations: 'disabled' });
         await popup.locator('#updatesTab').click();
         await popup.screenshot({ path: path.join(root, 'dist', 'updates-preview.png'), fullPage: true, animations: 'disabled' });
@@ -198,9 +201,9 @@ const video = (id, href, title, extras = '') => `<ytd-rich-item-renderer id="${i
         await popup.locator('#filtersTab').click();
         await popup.screenshot({ path: path.join(root, 'dist', 'filters-ru-preview.png'), fullPage: true, animations: 'disabled' });
         await context.route('https://www.youtube.com/?ytfc-age-test=1', route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' + [
-            ['year', '1 г. назад', '1 год назад'], ['months', '9 мес. назад', '9 месяцев назад'], ['fresh', '2 дн. назад', '2 дня назад'], ['boundary', '60 дн. назад', '60 дней назад']
-        ].map(([id, text, label]) => `<ytd-rich-item-renderer id="${id}"><yt-lockup-view-model><a class="ytLockupViewModelContentImage" href="/watch?v=${id}">Thumbnail</a><h3 class="ytLockupMetadataViewModelTitle">${id}</h3><yt-content-metadata-view-model><div class="ytContentMetadataViewModelMetadataRow" role="group"><span class="ytContentMetadataViewModelMetadataText">YouTube</span><span class="ytContentMetadataViewModelMetadataText" aria-label="316 тысяч просмотров">316 тыс.</span><span class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart" role="text" aria-label="${label}">${text}</span></div></yt-content-metadata-view-model></yt-lockup-view-model></ytd-rich-item-renderer>`).join('') + '</body></html>' }));
-        await worker.evaluate(() => chrome.storage.local.set({ oldVideoThreshold: 60, hideWatched: false, hideJams: false, hideShortsHome: false }));
+            ['year', '1 г. назад', '1 год назад'], ['months', '9 мес. назад', '9 месяцев назад'], ['fresh', '2 дн. назад', '2 дня назад'], ['boundary', '90 дн. назад', '90 дней назад']
+        ].map(([id, text, label]) => `<ytd-rich-item-renderer id="${id}" style="${id === 'year' ? 'display:grid!important' : ''}"><yt-lockup-view-model><a class="ytLockupViewModelContentImage" href="/watch?v=${id}">Thumbnail</a><h3 class="ytLockupMetadataViewModelTitle">${id}</h3><yt-content-metadata-view-model><div class="ytContentMetadataViewModelMetadataRow" role="group"><span class="ytContentMetadataViewModelMetadataText">YouTube</span><span class="ytContentMetadataViewModelMetadataText" aria-label="316 тысяч просмотров">316 тыс.</span><span class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart" role="text" aria-label="${label}">${text}</span><span class="ytContentMetadataViewModelMetadataText">8,02 тыс. Подписчики</span></div><div class="ytContentMetadataViewModelMetadataRow"><span class="ytContentMetadataViewModelMetadataText">5 VPH</span></div></yt-content-metadata-view-model></yt-lockup-view-model></ytd-rich-item-renderer>`).join('') + '</body></html>' }));
+        await worker.evaluate(() => chrome.storage.local.set({ oldVideoThreshold: 90, hideWatched: false, hideJams: false, hideShortsHome: false }));
         const agePage = await context.newPage(); agePage.on('pageerror', error => errors.push(error.message));
         await agePage.goto('https://www.youtube.com/?ytfc-age-test=1');
         await agePage.waitForFunction(() => document.querySelectorAll('[data-ytfc-hidden]').length === 2).catch(async error => {
@@ -209,38 +212,61 @@ const video = (id, href, title, extras = '') => `<ytd-rich-item-renderer id="${i
         });
         assert.equal(await agePage.locator('#year').getAttribute('data-ytfc-hidden'), 'age');
         assert.equal(await agePage.locator('#months').getAttribute('data-ytfc-hidden'), 'age');
+        assert.equal(await agePage.locator('#year').isVisible(), false);
+        assert.equal(await agePage.locator('#months').isVisible(), false);
+        await agePage.locator('#year').evaluate(card => {
+            const date = card.querySelector('[aria-label="1 год назад"]'); date.removeAttribute('aria-label'); date.classList.remove('ytContentMetadataViewModelMetadataTextLastPart');
+            date.textContent = '1 \u200eг. назад';
+            card.querySelector('yt-content-metadata-view-model').insertAdjacentHTML('beforeend', '<div class="ytContentMetadataViewModelMetadataRow"><span class="ytContentMetadataViewModelMetadataText">Additional statistics</span></div>');
+            card.style.setProperty('display', 'grid', 'important');
+        });
+        await agePage.waitForFunction(() => document.querySelector('#year').getAttribute('data-ytfc-hidden') === 'age' && getComputedStyle(document.querySelector('#year')).display === 'none');
         assert.equal(await agePage.locator('#fresh').isVisible(), true);
         assert.equal(await agePage.locator('#boundary').isVisible(), true);
         const agePopup = await context.newPage(); agePopup.on('pageerror', error => errors.push(error.message));
         await agePopup.goto(`chrome-extension://${extensionId}/popup.html`);
         await agePopup.waitForFunction(() => !document.getElementById('controls').disabled);
-        await agePopup.locator('#oldVideoThreshold').fill('365');
+        assert.equal(await agePopup.locator('#oldVideoThreshold').evaluate(node => node.tagName), 'SELECT');
+        await agePopup.locator('#oldVideoThreshold').focus();
+        await agePopup.locator('#oldVideoThreshold').selectOption('365');
         await agePage.waitForFunction(() => document.querySelectorAll('[data-ytfc-hidden]').length === 0);
         assert.equal(await agePopup.locator('#oldVideoThreshold').evaluate(node => document.activeElement === node), true);
-        await agePopup.locator('#oldVideoThreshold').fill('60');
+        await agePopup.locator('#oldVideoThreshold').selectOption('90');
         await agePage.waitForFunction(() => document.querySelectorAll('[data-ytfc-hidden]').length === 2).catch(async error => {
             console.error('Age diagnostics:', await agePage.evaluate(() => ({ url: location.href, hidden: [...document.querySelectorAll('[data-ytfc-hidden]')].map(n => ({ id: n.id, reasons: n.getAttribute('data-ytfc-hidden') })), metadata: [...document.querySelectorAll('yt-content-metadata-view-model')].map(n => n.outerHTML) })), await worker.evaluate(async () => ({ settings: await chrome.storage.local.get(), tabs: await chrome.tabs.query({ active: true, currentWindow: true }) })));
             throw error;
         });
-        assert.equal(await worker.evaluate(async () => (await chrome.storage.local.get('oldVideoThreshold')).oldVideoThreshold), 60);
-        await agePopup.locator('#oldVideoThreshold').fill('365');
+        assert.equal(await worker.evaluate(async () => (await chrome.storage.local.get('oldVideoThreshold')).oldVideoThreshold), 90);
+        await agePopup.screenshot({ path: path.join(root, 'dist', 'age-presets-ru-preview.png'), fullPage: true, animations: 'disabled' });
+        await agePopup.locator('#oldVideoThreshold').selectOption('365');
         await agePopup.close();
         await agePage.waitForFunction(() => document.querySelectorAll('[data-ytfc-hidden]').length === 0);
         assert.equal(await worker.evaluate(async () => (await chrome.storage.local.get('oldVideoThreshold')).oldVideoThreshold), 365);
-        await worker.evaluate(() => chrome.storage.local.set({ oldVideoThreshold: 60 }));
+        await worker.evaluate(() => chrome.storage.local.set({ oldVideoThreshold: 90 }));
         await agePage.bringToFront();
         await agePage.waitForFunction(() => document.querySelectorAll('[data-ytfc-hidden]').length === 2);
-        console.log('PASS: day cutoff applies while typing and survives immediately closing the popup');
+        console.log('PASS: ready-made age presets apply immediately and survive closing the popup');
         await agePage.locator('#months [aria-label="9 месяцев назад"]').evaluate(node => { node.textContent = '2 дн. назад'; node.setAttribute('aria-label', '2 дня назад'); });
         await agePage.waitForFunction(() => document.querySelectorAll('[data-ytfc-hidden]').length === 1);
         const [ageTab] = await worker.evaluate(() => chrome.tabs.query({ active: true, currentWindow: true }));
         const versionBefore = await worker.evaluate(() => chrome.runtime.getManifest().version);
-        await worker.evaluate(id => chrome.scripting.executeScript({ target: { tabId: id }, func: () => { globalThis.YTFC.CONTENT_REVISION = 0; globalThis.__YTFCContent.contentRevision = 0; } }), ageTab.id);
+        await worker.evaluate(id => chrome.scripting.executeScript({ target: { tabId: id }, func: () => { globalThis.YTFC.CONTENT_REVISION = 1; globalThis.__YTFCContent.contentRevision = 1; } }), ageTab.id);
         const recovered = await worker.evaluate(id => feedBridge.request({ type: 'getFeedStatus', tabId: id }), ageTab.id);
-        assert.equal(recovered.status.count, 1); assert.equal(recovered.status.contentRevision, 1);
+        assert.equal(recovered.status.count, 1); assert.equal(recovered.status.contentRevision, await worker.evaluate(() => YTFC.CONTENT_REVISION));
         assert.equal(recovered.status.version, versionBefore);
         assert.equal(await agePage.locator('style[data-ytfc-style]').count(), 1);
-        console.log('PASS: 60 days hides 1 year / 9 months in real compact metadata shape, preserves fresh/boundary dates and recovers without version bump');
+        console.log('PASS: 90-day preset physically hides 1 year / 9 months despite appended statistics and inline-important display; fresh/boundary dates survive, and revision 1 is upgraded without a version bump');
+        await agePage.goto('https://www.youtube.com/watch?v=scope-test');
+        await agePage.waitForFunction(() => document.querySelector('#old') && document.querySelectorAll('[data-ytfc-hidden]').length === 0);
+        const scopePopup = await context.newPage(); scopePopup.on('pageerror', error => errors.push(error.message));
+        await scopePopup.goto(`chrome-extension://${extensionId}/popup.html`);
+        await scopePopup.locator('#ageScopeWarning').waitFor({ state: 'visible' });
+        await scopePopup.screenshot({ path: path.join(root, 'dist', 'age-scope-warning-ru-preview.png'), fullPage: true, animations: 'disabled' });
+        await scopePopup.locator('#filterWatch').check();
+        await agePage.waitForFunction(() => document.querySelector('#old').getAttribute('data-ytfc-hidden') === 'age');
+        assert.equal(await agePage.locator('#old').isVisible(), false);
+        await scopePopup.locator('#ageScopeWarning').waitFor({ state: 'hidden' });
+        console.log('PASS: excluded recommendations show an explicit scope warning and hide old videos immediately when enabled');
         assert.deepEqual(errors, []);
         console.log('PASS: real service worker update checks, badge and persistent acknowledgement');
     } finally {

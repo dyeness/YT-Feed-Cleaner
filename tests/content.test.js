@@ -59,7 +59,7 @@ test('even a primary watch RD URL needs actual mix evidence', async t => {
 test('real radio mix hides and restores without destroying inline styles', async t => {
     const h = await setup(t, '<ytd-radio-renderer style="display:flex"><a id="thumbnail" href="/watch?v=abc&list=RDabc"></a></ytd-radio-renderer>');
     const card = h.doc.querySelector('ytd-radio-renderer');
-    assert.equal(hidden(card), true); assert.equal(card.style.display, 'flex');
+    assert.equal(hidden(card), true); assert.equal(card.style.display, 'none'); assert.equal(card.style.getPropertyPriority('display'), 'important');
     await h.change({ hideJams: false });
     assert.equal(hidden(card), false); assert.equal(card.style.display, 'flex');
 });
@@ -157,6 +157,55 @@ test('same-version recovery replaces a stale content revision rather than keepin
     assert.equal(h.doc.querySelectorAll('style[data-ytfc-style]').length, 1);
     assert.equal(h.status().contentRevision, h.window.YTFC.CONTENT_REVISION);
 });
+test('90-day cutoff hides one-year date before appended subscriber statistics', async t => {
+    const h = await setup(t, video({ title: 'Почему Disco Elysium - одна из величайших игр?', extras: '<yt-content-metadata-view-model><div class="ytContentMetadataViewModelMetadataRow"><span class="ytContentMetadataViewModelMetadataText">Tarnished</span><span class="ytContentMetadataViewModelMetadataText" aria-label="124 тысячи просмотров">124 тыс.</span><span class="ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart" aria-label="1 год назад">1 г. назад</span><span class="ytContentMetadataViewModelMetadataText">8,02 тыс. Подписчики</span></div></yt-content-metadata-view-model>' }), { oldVideoThreshold: 90 });
+    assert.equal(h.status().counts.age, 1);
+});
+test('90-day cutoff keeps date detection when statistics add a later metadata row or remove date aria', async t => {
+    const h = await setup(t, video({ extras: '<yt-content-metadata-view-model><div class="ytContentMetadataViewModelMetadataRow"><span class="ytContentMetadataViewModelMetadataText" aria-label="9 месяцев назад">9 мес. назад</span></div><div class="ytContentMetadataViewModelMetadataRow"><span class="ytContentMetadataViewModelMetadataText">5 VPH</span></div></yt-content-metadata-view-model>' }), { oldVideoThreshold: 90 });
+    assert.equal(h.status().counts.age, 1);
+    const date = h.doc.querySelector('[aria-label="9 месяцев назад"]'); date.removeAttribute('aria-label');
+    await settle(); assert.equal(h.status().counts.age, 1);
+    const row = date.parentElement; row.insertAdjacentHTML('beforeend', '<span class="ytContentMetadataViewModelMetadataText">8020 subscribers</span>');
+    await settle(); assert.equal(h.status().counts.age, 1);
+    date.textContent = '2 дн. назад'; await settle(); assert.equal(h.status().count, 0);
+});
+test('unwrapped date text between views and appended badges remains a publication date', async t => {
+    const h = await setup(t, video({ extras: '<yt-content-metadata-view-model><div class="ytContentMetadataViewModelMetadataRow"><span class="ytContentMetadataViewModelMetadataText">Tarnished</span><span class="ytContentMetadataViewModelMetadataText" aria-label="124 тысячи просмотров">124 тыс.</span>1 г. назад<span class="ytContentMetadataViewModelMetadataText">5 VPH</span></div></yt-content-metadata-view-model>' }), { oldVideoThreshold: 90 });
+    assert.equal(h.status().counts.age, 1);
+});
+test('late inline-important card display cannot defeat hiding and latest original styles are restored', async t => {
+    const h = await setup(t, video({ metadata: '<span>1 г. назад</span>' }), { oldVideoThreshold: 90 });
+    const card = h.doc.querySelector('ytd-rich-item-renderer');
+    card.style.setProperty('display', 'grid', 'important'); card.style.color = 'red'; await settle();
+    assert.equal(card.style.display, 'none'); assert.equal(card.style.getPropertyPriority('display'), 'important');
+    await h.change({ oldVideoThreshold: 365 });
+    assert.equal(hidden(card), false); assert.equal(card.style.display, 'grid'); assert.equal(card.style.getPropertyPriority('display'), 'important'); assert.equal(card.style.color, 'red');
+    await h.change({ oldVideoThreshold: 90 });
+    card.style.setProperty('display', 'flex', 'important'); await settle();
+    await h.change({ enabled: false }); assert.equal(card.style.display, 'flex');
+    assert.equal(card.hasAttribute('data-ytfc-inline-display'), false);
+});
+test('same-version script replacement restores detached ownership markers even without the old controller', async t => {
+    const h = await setup(t, video({ metadata: '<span>1 г. назад</span>' }), { oldVideoThreshold: 90 });
+    const card = h.doc.querySelector('ytd-rich-item-renderer');
+    h.window.__YTFCContent.dispose();
+    card.setAttribute('data-ytfc-hidden', 'age'); card.setAttribute('data-ytfc-inline-display', 'grid'); card.setAttribute('data-ytfc-inline-priority', 'important'); card.style.setProperty('display', 'none', 'important');
+    card.querySelector('#metadata-line span').textContent = '2 дня назад';
+    delete h.window.__YTFCContent; h.window.eval(source('content.js')); await settle();
+    assert.equal(hidden(card), false); assert.equal(card.style.display, 'grid'); assert.equal(card.style.getPropertyPriority('display'), 'important');
+});
+test('90-day age filtering preserves channel exceptions, master/preview and every explicit scope', async t => {
+    for (const [path, flag] of [['/', 'filterHome'], ['/results', 'filterSearch'], ['/watch?v=main', 'filterWatch'], ['/feed/subscriptions', 'filterSubscriptions']]) {
+        const h = await setup(t, video({ metadata: '<span>1 г. назад</span>', channel: 'safe' }), { oldVideoThreshold: 90, [flag]: false }, `https://www.youtube.com${path}`);
+        assert.equal(h.status().count, 0, path);
+        await h.change({ [flag]: true }); assert.equal(h.status().counts.age, 1, path);
+        h.status('togglePreview'); assert.equal(h.status().count, 0, path);
+        h.status('togglePreview'); assert.equal(h.status().counts.age, 1, path);
+        await h.change({ allowedChannels: '@safe' }); assert.equal(h.status().count, 0, path);
+        await h.change({ allowedChannels: '', enabled: false }); assert.equal(h.status().count, 0, path);
+    }
+});
 test('publication metadata updates hide and restore a reused card', async t => {
     const h = await setup(t, video({ metadata: '<span>999 views</span><span>2 years ago</span>' }), { oldVideoThreshold: 30 });
     assert.equal(h.status().count, 1);
@@ -224,7 +273,8 @@ test('opt-in dust finishes hiding, removes particles and preserves original styl
     h.animations.at(-1).onfinish();
     assert.equal(hidden(card), true); assert.equal(card.hasAttribute('data-ytfc-dissolving'), false);
     assert.equal(h.doc.querySelector('[data-ytfc-dust]'), null);
-    assert.equal(card.getAttribute('style'), null);
+    assert.equal(card.style.display, 'none'); assert.equal(card.style.getPropertyPriority('display'), 'important');
+    await h.change({ enabled: false }); assert.equal(card.getAttribute('style'), null);
 });
 test('turning animation off finishes pending hiding immediately without extra effects', async t => {
     const h = await setup(t, video({ href: '/shorts/a' }), { animateHiding: true });

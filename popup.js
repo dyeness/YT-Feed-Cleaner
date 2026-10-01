@@ -31,9 +31,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     function applyAppearance() {
         document.documentElement.lang = I.resolveLanguage(settings.language);
         document.documentElement.dataset.textSize = settings.textSize;
-        document.title = t('appTitle');
+        document.title = F.BRAND_NAME;
         document.querySelectorAll('[data-i18n]').forEach(node => { node.textContent = t(node.dataset.i18n); });
-        document.querySelector('[role=tablist]').setAttribute('aria-label', t('appTitle'));
+        document.querySelector('[role=tablist]').setAttribute('aria-label', F.BRAND_NAME);
+        for (const option of $('oldVideoThreshold').querySelectorAll('[data-legacy-age]')) option.textContent = t('ageLegacy', [option.value]);
         updateControls(); renderFeed(); renderUpdates(updateState);
         if (saved) $('saveStatus').textContent = t('saved');
     }
@@ -42,7 +43,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         for (const [key, value] of Object.entries(settings)) {
             const element = $(key);
             if (typeof value === 'boolean') element.checked = value;
-            else element.value = value;
+            else {
+                if (key === 'oldVideoThreshold') {
+                    element.querySelectorAll('[data-legacy-age]').forEach(option => option.remove());
+                    if (!F.AGE_PRESETS.includes(value)) {
+                        const option = document.createElement('option'); option.value = String(value);
+                        option.dataset.legacyAge = 'true'; option.textContent = t('ageLegacy', [String(value)]);
+                        element.appendChild(option);
+                    }
+                }
+                element.value = value;
+            }
         }
         applyAppearance();
     }
@@ -86,6 +97,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         $('statsDetails').replaceChildren();
         $('refreshStats').textContent = t(feedData ? 'refreshStats' : 'reconnectStats');
         renderAnimationState();
+        const inactiveAgeScope = !!(settings.oldVideoThreshold > 0 && settings.enabled && feedData?.context && !feedData.paused && !F.inVideoScope(settings, feedData.context));
+        $('ageScopeWarning').hidden = !inactiveAgeScope;
+        if (inactiveAgeScope) {
+            const key = { home: 'home', search: 'search', watch: 'recommendations', subscriptions: 'subscriptions' }[feedData.context] || 'otherPages';
+            $('ageScopeWarning').textContent = t('ageScopeInactive', [t(key)]);
+        }
         if (!feedData) {
             $('statsText').textContent = t(feedErrorKey); $('preview').disabled = true; return;
         }

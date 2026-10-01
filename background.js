@@ -13,7 +13,7 @@ async function renderBadge(state, settings) {
     const t = key => I.translate(key, [], settings.language);
     await chrome.action.setBadgeText({ text: items.length ? t('badgeNew') : '' });
     await chrome.action.setBadgeBackgroundColor({ color: '#e74759' });
-    await chrome.action.setTitle({ title: items.length ? `${t('appTitle')} — ${t('updateMsg')}` : t('appTitle') });
+    await chrome.action.setTitle({ title: items.length ? `${F.BRAND_NAME} — ${t('updateMsg')}` : F.BRAND_NAME });
 }
 async function fetchJSON(url, optional = false) {
     const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(15000), headers: { Accept: 'application/vnd.github+json' } });
@@ -78,7 +78,7 @@ async function performCheck() {
             const version = unseen.find(item => item.version);
             const t = key => I.translate(key, [], latestSettings.language);
             await chrome.notifications.create('ytfc-update', {
-                type: 'basic', iconUrl: 'icons/icon128.png', title: t('appTitle'),
+                type: 'basic', iconUrl: 'icons/icon128.png', title: F.BRAND_NAME,
                 message: version ? `${t('newVersion')}: ${version.version}` : `${t('newCommit')}: ${unseen[0].sha.slice(0, 7)}`
             });
             // Merge again so acknowledging while the notification is delivered is not undone.

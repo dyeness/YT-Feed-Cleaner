@@ -78,7 +78,7 @@ test('notification opt-out keeps popup updates but makes no desktop notification
 test('notifications and badge honor explicit Russian language independently of the browser', async () => {
     const h = await setup({ storage: { language: 'ru' }, version: '1.6.0' });
     await h.message('checkUpdates');
-    assert.equal(h.notifications[0].title, 'Очистка YouTube');
+    assert.equal(h.notifications[0].title, 'YouTube Feed Cleaner');
     assert.equal(h.notifications[0].message, 'Новая версия: 1.6.0');
     assert.equal(h.badges.at(-1), 'НОВ');
     await h.chrome.storage.local.set({ language: 'en' });

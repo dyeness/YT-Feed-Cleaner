@@ -11,6 +11,8 @@
         language: 'auto', textSize: 'large', animateHiding: false,
         animationSpeed: 'normal', respectReducedMotion: true
     });
+    const AGE_PRESETS = Object.freeze([0, 1, 7, 14, 30, 60, 90, 180, 365, 730]);
+    const inVideoScope = (settings, context) => !!({ home: settings.filterHome, search: settings.filterSearch, watch: settings.filterWatch, subscriptions: settings.filterSubscriptions })[context];
     const bounded = (value, fallback, min, max) => {
         if (value === '' || value === null || typeof value === 'boolean') return fallback;
         const number = Number(value);
@@ -34,7 +36,7 @@
     const lines = text => String(text || '').split(/\r?\n/).map(normalizeText).filter(Boolean);
     function parseAge(text) {
         // Only a publication metadata item, never a title, aria-label or combined view count.
-        const match = normalizeText(text).match(/^(?:(?:streamed|premiered)\s+|(?:трансляция|премьера)\s+)?(\d+|a|an|one|один|одна|одну)\s+(seconds?|minutes?|hours?|days?|weeks?|months?|years?|секунд[ауы]?|сек\.?|минут[ауы]?|мин\.?|час(?:а|ов)?|ч\.?|день|дня|дней|дн\.?|недел[яьиью]+|нед\.?|месяц(?:а|ев)?|мес\.?|год(?:а)?|лет|г\.?)\s+(?:ago|назад)$/u);
+        const match = normalizeText(String(text || '').replace(/[\u061c\u200b-\u200f\u2066-\u2069\ufeff]/gu, '')).match(/^(?:(?:streamed|premiered)\s+|(?:трансляция|премьера)\s+(?:(?:состоялась|закончилась|завершилась|была)\s+)?)?(\d+|a|an|one|один|одна|одну)\s+(seconds?|minutes?|hours?|days?|weeks?|months?|years?|секунд[ауы]?|сек\.?|минут[ауы]?|мин\.?|час(?:а|ов)?|ч\.?|день|дня|дней|дн\.?|недел[яьиью]+|нед\.?|месяц(?:а|ев)?|мес\.?|год(?:а)?|лет|г\.?)\s+(?:ago|назад)$/u);
         if (!match) return null;
         const value = /^\d+$/.test(match[1]) ? Number(match[1]) : 1;
         const unit = match[2];
@@ -87,8 +89,7 @@
         if (settings.hideJams && facts.mix) reasons.push('mix');
         const shortsSetting = context === 'home' ? settings.hideShortsHome : context === 'search' ? settings.hideShortsSearch : settings.hideShortsOther;
         if (shortsSetting && facts.shorts) reasons.push('shorts');
-        const inScope = ({ home: settings.filterHome, search: settings.filterSearch, watch: settings.filterWatch, subscriptions: settings.filterSubscriptions })[context];
-        if (!inScope) return reasons;
+        if (!inVideoScope(settings, context)) return reasons;
         if (settings.hidePlaylists && facts.playlist && !facts.mix) reasons.push('playlist');
         if (!facts.video) return reasons;
         if (settings.hideLive && facts.live) reasons.push('live');
@@ -115,7 +116,7 @@
         }
         return false;
     }
-    const api = { CONTENT_REVISION: 1, DEFAULTS, normalizeSettings, normalizeText, lines, parseAge, parsePublicationAge, parseDuration, parseProgress, channelMatches, classify, parseVersion, isNewerVersion };
+    const api = { CONTENT_REVISION: 2, BRAND_NAME: 'YouTube Feed Cleaner', DEFAULTS, AGE_PRESETS, inVideoScope, normalizeSettings, normalizeText, lines, parseAge, parsePublicationAge, parseDuration, parseProgress, channelMatches, classify, parseVersion, isNewerVersion };
     root.YTFC = api;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

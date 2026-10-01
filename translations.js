@@ -150,6 +150,58 @@
     "reloadYouTube": {
       "message": "Open / reload YouTube to see statistics"
     },
+    "agePreset": {
+      "message": "Video age"
+    },
+    "ageAny": {
+      "message": "Any time"
+    },
+    "age1": {
+      "message": "Up to 24 hours"
+    },
+    "age7": {
+      "message": "Up to 1 week"
+    },
+    "age14": {
+      "message": "Up to 2 weeks"
+    },
+    "age30": {
+      "message": "Up to 1 month · 30 days"
+    },
+    "age60": {
+      "message": "Up to 2 months · 60 days"
+    },
+    "age90": {
+      "message": "Up to 3 months · 90 days"
+    },
+    "age180": {
+      "message": "Up to 6 months · 180 days"
+    },
+    "age365": {
+      "message": "Up to 1 year · 365 days"
+    },
+    "age730": {
+      "message": "Up to 2 years · 730 days"
+    },
+    "ageLegacy": {
+      "message": "Previous: $DAYS$ days",
+      "placeholders": {
+        "days": {
+          "content": "$1"
+        }
+      }
+    },
+    "ageScopeInactive": {
+      "message": "Age filtering is off for $PAGE$.",
+      "placeholders": {
+        "page": {
+          "content": "$1"
+        }
+      }
+    },
+    "otherPages": {
+      "message": "this section"
+    },
     "saved": {
       "message": "Saved"
     },
@@ -217,7 +269,7 @@
       "message": "Blocked channel"
     },
     "appTitle": {
-      "message": "YouTube Cleaner"
+      "message": "YouTube Feed Cleaner"
     },
     "updatesTab": {
       "message": "Updates"
@@ -335,7 +387,7 @@
   },
   "ru": {
     "extName": {
-      "message": "Очистка ленты YouTube"
+      "message": "YouTube Feed Cleaner"
     },
     "extDesc": {
       "message": "Точные фильтры YouTube: джемы, Shorts, просмотренные видео, заголовки и каналы. Оповещения об обновлениях GitHub."
@@ -482,6 +534,58 @@
     "reloadYouTube": {
       "message": "Откройте / перезагрузите YouTube для статистики"
     },
+    "agePreset": {
+      "message": "Возраст видео"
+    },
+    "ageAny": {
+      "message": "Любое время"
+    },
+    "age1": {
+      "message": "До 24 часов"
+    },
+    "age7": {
+      "message": "До 1 недели"
+    },
+    "age14": {
+      "message": "До 2 недель"
+    },
+    "age30": {
+      "message": "До 1 месяца · 30 дней"
+    },
+    "age60": {
+      "message": "До 2 месяцев · 60 дней"
+    },
+    "age90": {
+      "message": "До 3 месяцев · 90 дней"
+    },
+    "age180": {
+      "message": "До полугода · 180 дней"
+    },
+    "age365": {
+      "message": "До 1 года · 365 дней"
+    },
+    "age730": {
+      "message": "До 2 лет · 730 дней"
+    },
+    "ageLegacy": {
+      "message": "Ранее: $DAYS$ дн.",
+      "placeholders": {
+        "days": {
+          "content": "$1"
+        }
+      }
+    },
+    "ageScopeInactive": {
+      "message": "Возраст: фильтр для «$PAGE$» выключен.",
+      "placeholders": {
+        "page": {
+          "content": "$1"
+        }
+      }
+    },
+    "otherPages": {
+      "message": "Этого раздела"
+    },
     "saved": {
       "message": "Сохранено"
     },
@@ -549,7 +653,7 @@
       "message": "Заблокированный канал"
     },
     "appTitle": {
-      "message": "Очистка YouTube"
+      "message": "YouTube Feed Cleaner"
     },
     "updatesTab": {
       "message": "Обновления"

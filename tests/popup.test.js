@@ -15,7 +15,7 @@ async function setup(t, initial = {}, options = {}) {
     let changes, currentPort, feedError = options.feedError;
     const requests = [], feed = { protocol: 2, count: 1, counts: { age: 1 }, items: [{ title: '<img onerror=alert(1)>', reasons: ['age'] }], animation: 'off', paused: false };
     dom.window.chrome = {
-        i18n: { getUILanguage: () => 'en', getMessage(key, params = []) { return (messages[key]?.message || '').replace(/\$\w+\$/g, params[0]); } },
+        i18n: { getUILanguage: () => options.browserLanguage || 'en', getMessage(key, params = []) { return (messages[key]?.message || '').replace(/\$\w+\$/g, params[0]); } },
         storage: { local: { async get(defaults) { return { ...defaults, ...stored }; }, async set(values) { Object.assign(stored, values); saves.push(values); } }, onChanged: { addListener(fn) { changes = fn; } } },
         runtime: { getManifest: () => ({ version: '1.5.2' }), async sendMessage(message) {
             requests.push(message);
@@ -55,17 +55,34 @@ test('changing an input saves all normalized settings', async t => {
     assert.equal(h.saves.length, 1);
     assert.deepEqual(Object.keys(h.saves[0]).sort(), Object.keys(F.DEFAULTS).sort());
 });
-test('typing a 60-day cutoff saves while the number field stays focused, without blur/change', async t => {
+test('age is a ready-made preset selector, and choosing 90 days saves immediately', async t => {
     const h = await setup(t, { oldVideoThreshold: 0 });
-    const field = h.doc.getElementById('oldVideoThreshold'); field.focus(); field.value = '60';
-    field.dispatchEvent(new h.window.Event('input', { bubbles: true })); await settle();
-    assert.equal(h.stored.oldVideoThreshold, 60);
-    assert.equal(h.doc.activeElement, field);
+    const field = h.doc.getElementById('oldVideoThreshold');
+    assert.equal(field.tagName, 'SELECT');
+    assert.deepEqual([...field.options].map(option => Number(option.value)), [...F.AGE_PRESETS]);
+    field.focus(); field.value = '90'; field.dispatchEvent(new h.window.Event('change', { bubbles: true })); await settle();
+    assert.equal(h.stored.oldVideoThreshold, 90); assert.equal(h.doc.activeElement, field);
+});
+test('existing non-preset cutoff is preserved, localized and never silently rounded', async t => {
+    const h = await setup(t, { oldVideoThreshold: 120, language: 'ru' });
+    const field = h.doc.getElementById('oldVideoThreshold');
+    assert.equal(field.value, '120'); assert.match(field.selectedOptions[0].textContent, /Ранее: 120/);
+    h.doc.getElementById('hideLive').checked = true; h.doc.getElementById('hideLive').dispatchEvent(new h.window.Event('change')); await settle();
+    assert.equal(h.stored.oldVideoThreshold, 120);
+    field.value = '90'; field.dispatchEvent(new h.window.Event('change')); await settle(); assert.equal(h.stored.oldVideoThreshold, 90);
+});
+test('age scope warning explains excluded recommendations but disappears when enabled', async t => {
+    const h = await setup(t, { oldVideoThreshold: 90 });
+    h.push({ context: 'watch' }); const warning = h.doc.getElementById('ageScopeWarning');
+    assert.equal(warning.hidden, false); assert.match(warning.textContent, /Recommendations/);
+    const checkbox = h.doc.getElementById('filterWatch'); checkbox.checked = true; checkbox.dispatchEvent(new h.window.Event('change')); await settle();
+    h.push({ context: 'watch' }); assert.equal(warning.hidden, true);
+    assert.equal(h.stored.filterHome, true); assert.equal(h.stored.filterSearch, false);
 });
 test('invalid partial numeric input preserves the last valid cutoff without validation popups', async t => {
     const h = await setup(t, { oldVideoThreshold: 60 });
     let reports = 0; h.doc.getElementById('settingsForm').reportValidity = () => { reports++; return false; };
-    const field = h.doc.getElementById('oldVideoThreshold'); field.value = '-1';
+    const field = h.doc.getElementById('minDuration'); field.value = '-1';
     field.dispatchEvent(new h.window.Event('input', { bubbles: true })); await settle();
     assert.equal(h.stored.oldVideoThreshold, 60); assert.equal(reports, 0);
 });
@@ -100,15 +117,26 @@ test('manual language changes static labels, statistics, reasons and update erro
     const language = h.doc.getElementById('language');
     language.value = 'ru'; language.dispatchEvent(new h.window.Event('change')); await settle();
     assert.equal(h.doc.documentElement.lang, 'ru');
-    assert.equal(h.doc.querySelector('h1').textContent, 'Очистка YouTube');
+    assert.equal(h.doc.querySelector('h1').textContent, 'YouTube Feed Cleaner');
     assert.equal(h.doc.getElementById('statsText').textContent, 'Скрыто на странице: 1');
     assert.match(h.doc.getElementById('statsDetails').textContent, /Возраст публикации/);
     assert.match(h.doc.getElementById('updateStatus').textContent, /Нет связи с GitHub/);
     assert.equal(h.stored.language, 'ru');
     language.value = 'en'; language.dispatchEvent(new h.window.Event('change')); await settle();
-    assert.equal(h.doc.querySelector('h1').textContent, 'YouTube Cleaner');
+    assert.equal(h.doc.querySelector('h1').textContent, 'YouTube Feed Cleaner');
     assert.equal(h.doc.getElementById('statsText').textContent, 'Hidden on this page: 1');
     assert.match(h.doc.getElementById('updateStatus').textContent, /Cannot reach GitHub/);
+});
+test('English brand remains fixed for ru, en and Russian-browser auto mode', async t => {
+    assert.equal(JSON.parse(source('manifest.json')).name, F.BRAND_NAME);
+    for (const language of ['ru', 'en', 'auto']) {
+        const h = await setup(t, { language }, { browserLanguage: 'ru-RU' });
+        assert.equal(h.doc.querySelector('h1').textContent, 'YouTube Feed Cleaner', language);
+        assert.equal(h.doc.title, 'YouTube Feed Cleaner', language);
+        assert.equal(h.doc.querySelector('[role=tablist]').getAttribute('aria-label'), 'YouTube Feed Cleaner', language);
+        assert.equal(h.doc.documentElement.lang, language === 'en' ? 'en' : 'ru');
+        assert.equal(h.doc.getElementById('filtersTab').textContent, language === 'en' ? 'Filters' : 'Фильтры');
+    }
 });
 test('SVG is used in popup and text size / animation controls persist independently', async t => {
     const h = await setup(t);

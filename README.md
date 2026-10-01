@@ -1,4 +1,4 @@
-# YouTube Feed Cleaner · 1.5.3
+# YouTube Feed Cleaner · 1.5.4
 
 [Русская документация](README_ru.md)
 
@@ -20,23 +20,23 @@ No Node.js or build is required for normal use. `npm run package` optionally cre
 - **Mixes:** all pages; requires a primary RD playlist link and a radio/mix/collection signal. A title saying “Mix”, an incidental description link, or a normal autoplay video with `list=RD` is not enough.
 - **Shorts:** independent controls for Home, Search, and other pages; shelves and individual cards. The active player itself is untouched.
 - **Watched:** 10–100% threshold in 10% steps (older intermediate values round upwards), using only the thumbnail resume-playback percentage. Classic resume overlays and modern `yt`/`Yt` watched-fill segments, including `SegmentModern`, are supported, along with camelCase lockup thumbnail links. Pixel widths, full-width tracks and player progress do not match.
-- **Age:** arbitrary days, 0 disables; only videos strictly older than the threshold match. Only publication metadata is parsed, including compact Russian labels such as `9 мес. назад` and the full accessible date on that specific field. Titles, descriptions, view counts and card/thumbnail accessibility labels are ignored.
+- **Age presets:** Any time, 24 hours, 1/2 weeks, 1/2/3/6 months (30/60/90/180 days), 1/2 years (365/730 days). No manual day input. Previously saved custom bounds remain as a labeled legacy option rather than being silently rounded. Only videos strictly older than the chosen threshold match. Only publication metadata is parsed, including compact Russian labels such as `9 мес. назад` and the full accessible date on that specific field. Titles, descriptions, view counts and card/thumbnail accessibility labels are ignored.
 - **Duration:** minimum/maximum minutes, decimals supported; 0 disables each bound. Bounds are inclusive. Unknown duration, live and upcoming videos never match duration filters.
 - **Live streams, upcoming premieres, regular playlists:** separate toggles. An ambiguous “Premiere” label is not enough to classify a future event.
 - **Title phrases:** literal case-insensitive substring matching, one phrase per line; any matching phrase hides the video. No regular expressions.
 - **Blocked channels:** exact names, @handles or channel URLs, one per line. Handles/URLs only match when that identity is present in the card. Names can be ambiguous; use an identity when available.
 - **Never-hide channels:** override every filter, including Mixes and Shorts. With exceptions configured, Shorts shelves are filtered card by card rather than hidden as a whole. An unknown channel cannot match a rule.
-- **Scope:** apply the video filters to Home, Search, watch-page recommendations and Subscriptions separately. Default remains Home only. Mixes and Shorts use their own controls.
+- **Scope:** apply the video filters to Home, Search, watch-page recommendations and Subscriptions separately. Default remains Home only. When an age preset is selected but the current section is excluded, the popup explicitly warns that age filtering is off there. Mixes and Shorts use their own controls.
 - Global enable switch, reset filters, live current-page hidden count, reasons and sample titles. Statistics update when cards change, without reopening the popup. Opening popup.html as a tab targets the most recently accessed YouTube tab in that window.
 - **Show hidden temporarily:** pause this tab until resuming or reloading, without changing persisted settings.
 
-Settings apply immediately to loaded content scripts. SPA navigation and changes to URLs, text, badges and progress recompute decisions, including restoration of recycled cards. Hiding uses an extension-owned CSS attribute, preserving YouTube's original inline display styles.
+Settings apply immediately to loaded content scripts. SPA navigation and changes to URLs, text, badges and progress recompute decisions, including restoration of recycled cards. Dates may appear before added subscriber/statistics fields or in an earlier metadata row; there is no last-field or last-row requirement. Hiding uses an owned marker and temporary inline-important display override so other extensions' card styles cannot make a match visible. Original display values/priorities are restored on unhide, preserving later YouTube style edits; DOM ownership markers also permit recovery after script replacement.
 
 ### Language, SVG, text size and disintegration
 
 The **Appearance** tab provides:
 
-- **Language:** automatic browser-language selection, explicit Russian or explicit English. Changes immediately translate labels, hints, hidden reasons, statuses and update errors, and also apply to new desktop notifications and the toolbar title/badge. Video titles, commit messages and channel names remain original; Chrome's extension-list name follows the browser language.
+- **Language:** automatic browser-language selection, explicit Russian or explicit English. Changes immediately translate labels, hints, hidden reasons, statuses and update errors, and also apply to new desktop notifications and the toolbar title/badge. The extension brand remains **YouTube Feed Cleaner** in English in Chrome, the popup, tab title, toolbar and notifications regardless of language. Other labels remain localized. Video titles, commit messages and channel names remain original.
 - **Text size:** standard 16 px, large 18 px (**default**) or extra large 20 px. Hints and buttons scale too. This affects only the extension popup.
 - **SVG:** `icons/icon.svg` is used directly in the interface and is the single icon source. Chrome's toolbar/notification APIs do not support SVG, so `npm run icons` renders their required PNG fallbacks from that SVG.
 - **Disintegration:** a separate opt-in toggle, **off by default**. A visible card dissolves left-to-right as thumbnail fragments drift away; colored particles are used when no thumbnail is available. Speeds: 0.45 / 0.8 / 1.2 seconds. Filtering decisions are unaffected.

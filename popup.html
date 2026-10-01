@@ -8,11 +8,11 @@
 </head>
 <body>
 <main>
-    <header><img src="icons/icon.svg" alt="" width="48" height="48"><div><h1 data-i18n="appTitle">YouTube Cleaner</h1><span id="version" class="muted"></span></div></header>
+    <header><img src="icons/icon.svg" alt="" width="48" height="48"><div><h1>YouTube Feed Cleaner</h1><span id="version" class="muted"></span></div></header>
     <form id="settingsForm">
     <fieldset id="controls" disabled>
         <label class="master"><span data-i18n="enabled">Enable filtering</span><input type="checkbox" id="enabled"></label>
-        <nav class="tabs" role="tablist" aria-label="Feed Cleaner">
+        <nav class="tabs" role="tablist" aria-label="YouTube Feed Cleaner">
             <button type="button" id="filtersTab" role="tab" aria-selected="true" aria-controls="filtersPanel" data-i18n="filtersTab">Filters</button>
             <button type="button" id="updatesTab" role="tab" aria-selected="false" aria-controls="updatesPanel" tabindex="-1" data-i18n="updatesTab">Updates</button>
             <button type="button" id="appearanceTab" role="tab" aria-selected="false" aria-controls="appearancePanel" tabindex="-1" data-i18n="appearanceTab">Appearance</button>
@@ -37,7 +37,19 @@
             </div>
             <label class="row"><input type="checkbox" id="hideWatched"><span data-i18n="optHideWatched">Watched videos</span></label>
             <label class="field" for="watchThreshold"><span id="thresholdLabel"></span><input type="range" id="watchThreshold" min="10" max="100" step="10"></label>
-            <label class="field"><span data-i18n="ageDays">Hide older than (days; 0 = off)</span><input type="number" id="oldVideoThreshold" min="0" max="100000" step="1"></label>
+            <label class="field" for="oldVideoThreshold"><span data-i18n="agePreset">Video age</span><select id="oldVideoThreshold" required>
+                <option value="0" data-i18n="ageAny">Any time</option>
+                <option value="1" data-i18n="age1">Last 24 hours</option>
+                <option value="7" data-i18n="age7">Last week</option>
+                <option value="14" data-i18n="age14">Last 2 weeks</option>
+                <option value="30" data-i18n="age30">Last month · 30 days</option>
+                <option value="60" data-i18n="age60">Last 2 months · 60 days</option>
+                <option value="90" data-i18n="age90">Last 3 months · 90 days</option>
+                <option value="180" data-i18n="age180">Last 6 months · 180 days</option>
+                <option value="365" data-i18n="age365">Last year · 365 days</option>
+                <option value="730" data-i18n="age730">Last 2 years · 730 days</option>
+            </select></label>
+            <p id="ageScopeWarning" class="error" hidden></p>
             <div class="two-columns">
                 <label class="field"><span data-i18n="minDuration">Minimum minutes (0 = off)</span><input type="number" id="minDuration" min="0" max="100000" step="0.1"></label>
                 <label class="field"><span data-i18n="maxDuration">Maximum minutes (0 = off)</span><input type="number" id="maxDuration" min="0" max="100000" step="0.1"></label>

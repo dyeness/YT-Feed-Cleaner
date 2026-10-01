@@ -23,6 +23,21 @@ test('publication metadata accepts bullet-separated views but not arbitrary titl
     for (const text of ['125 тыс. просмотров • 9 месяцев назад', '100 views · 9 months ago', '1 год назад • 1 млн просмотров']) assert.ok(F.parsePublicationAge(text) > 60, text);
     for (const text of ['Моя история 1 год назад', '100 views 9 months ago', '1 год назад • 9 месяцев назад', '9 месяцев назад — моя история']) assert.equal(F.parsePublicationAge(text), null, text);
 });
+test('90-day cutoff accepts compact Russian year labels, bidi controls and ended-stream dates', () => {
+    const s = settings({ oldVideoThreshold: 90 });
+    for (const text of ['1 г. назад', '1 г назад', '\u20661 г. назад\u2069', '1 \u200eг. назад', 'Трансляция состоялась 1 год назад', 'Трансляция закончилась 9 месяцев назад', 'Премьера состоялась 1 год назад']) {
+        assert.ok(F.parseAge(text) > 90, text);
+        assert.deepEqual(F.classify(facts({ age: F.parseAge(text) }), s, 'home'), ['age'], text);
+    }
+});
+test('every ready age preset preserves strict older-than boundaries and off never hides by age', () => {
+    for (const cutoff of F.AGE_PRESETS) {
+        const s = settings({ oldVideoThreshold: cutoff });
+        assert.deepEqual(F.classify(facts({ age: cutoff }), s, 'home'), [], String(cutoff));
+        assert.deepEqual(F.classify(facts({ age: cutoff + 1 }), s, 'home'), cutoff ? ['age'] : [], String(cutoff));
+        assert.deepEqual(F.classify(facts({ age: null }), s, 'home'), [], String(cutoff));
+    }
+});
 test('duration and progress never confuse arbitrary numbers or pixel widths', () => {
     assert.equal(F.parseDuration(' 12:34 '), 754);
     assert.equal(F.parseDuration('1:02:03'), 3723);

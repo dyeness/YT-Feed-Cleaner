@@ -7,7 +7,8 @@
     if (existing?.version === version && existing.contentRevision === F.CONTENT_REVISION && existing.alive) return;
     existing?.dispose?.();
     // Drop stale extension-owned markers left by an invalidated content world.
-    document.querySelectorAll('[data-ytfc-hidden], [data-ytfc-dissolving]').forEach(element => {
+    document.querySelectorAll('[data-ytfc-hidden], [data-ytfc-dissolving], [data-ytfc-inline-display]').forEach(element => {
+        restoreInlineDisplay(element);
         element.removeAttribute('data-ytfc-hidden'); element.removeAttribute('data-ytfc-dissolving');
     });
     document.querySelectorAll('[data-ytfc-dust], style[data-ytfc-style]').forEach(element => element.remove());
@@ -84,24 +85,39 @@
         const upcoming = labels.some(label => ['upcoming', 'запланировано'].includes(label)) || !!ownNodes(card, '[overlay-style="UPCOMING"], ytd-thumbnail-overlay-upcoming-event-reminder-renderer')[0];
         let age = null;
         // Only publication metadata. Never use card/title/thumbnail aria-labels.
-        const metadata = ownNodes(card, `#metadata-line span, #metadata-line yt-formatted-string, ${METADATA_TEXT}, yt-content-metadata-view-model span, ${METADATA_ROW}`);
+        const metadata = ownNodes(card, `#metadata-line span, #metadata-line yt-formatted-string, ${METADATA_TEXT}, yt-content-metadata-view-model span, yt-content-metadata-view-model yt-formatted-string, yt-content-metadata-view-model [role="text"], ${METADATA_ROW}`);
+        const candidates = metadata.map(item => ({ item, text: item.textContent, direct: false }));
+        // Some statistics extensions unwrap the date into a direct text node.
+        for (const container of ownNodes(card, `#metadata-line, yt-content-metadata-view-model, ${METADATA_ROW}`)) {
+            for (const node of container.childNodes) if (node.nodeType === 3 && F.parseAge(node.nodeValue) !== null) {
+                candidates.push({ item: container, text: node.nodeValue, direct: true, node });
+            }
+        }
         const accessibleAges = [], visibleAges = [];
-        for (const item of metadata) {
-            if (item.closest('a, #channel-name, ytd-channel-name') || item.querySelector('a')) continue;
-            const row = item.closest(METADATA_ROW), host = item.closest('yt-content-metadata-view-model');
-            const rows = host ? [...host.querySelectorAll(METADATA_ROW)] : [];
-            if (row && rows.length > 1 && row !== rows.at(-1)) continue; // Channel-name row.
-            const fields = row ? [...row.querySelectorAll(METADATA_TEXT)] : [];
-            if (fields.length && item === row) continue; // Inspect fields, not their concatenated names.
-            const field = item.closest(METADATA_TEXT);
-            if (field && fields.length > 1 && field !== fields.at(-1)) continue;
-            const visibleAge = F.parsePublicationAge(item.textContent);
-            // Current YouTube emits "9 мес. назад" with a full publication-date
-            // label on that specific metadata field, not on the video card.
-            const accessibleAge = F.parseAge(item.getAttribute('aria-label'));
+        for (const { item, text, direct, node } of candidates) {
+            if (item.closest('a, #channel-name, ytd-channel-name, #video-title, #video-title-link, .yt-lockup-metadata-view-model__title, .ytLockupMetadataViewModelTitle, .YtLockupMetadataViewModelTitle, #description')) continue;
+            if (!direct && item.querySelector('a')) continue;
+            const visibleAge = F.parsePublicationAge(text);
+            const accessibleAge = direct ? null : F.parseAge(item.getAttribute('aria-label'));
+            // Publication-field labels are semantic evidence regardless of position.
+            // A subscriber badge or an extra row must never invalidate the date.
             if (accessibleAge !== null) {
                 accessibleAges.push(visibleAge === null ? accessibleAge : Math.min(visibleAge, accessibleAge));
-            } else if (visibleAge !== null) visibleAges.push(visibleAge);
+                continue;
+            }
+            if (visibleAge === null) continue;
+            const row = item.closest(METADATA_ROW), host = item.closest('yt-content-metadata-view-model');
+            const fields = row ? [...row.querySelectorAll(METADATA_TEXT)] : [];
+            if (!direct && fields.length && item === row) continue; // Not concatenated channel names.
+            const field = item.closest(METADATA_TEXT);
+            const dateMarked = field?.matches('.ytContentMetadataViewModelMetadataTextLastPart, .YtContentMetadataViewModelMetadataTextLastPart');
+            const viewEvidence = [...(host || row || item).querySelectorAll(`${METADATA_TEXT}, [aria-label]`)].some(n => /просмотр|\bviews?\b/iu.test(`${n.getAttribute('aria-label') || ''} ${n.textContent}`));
+            // Reject an unlinked creator name such as "9 months ago" before the
+            // view count. Unlike the former last-field rule this allows dates in
+            // the middle, in an earlier row, or before unrelated statistics.
+            if (viewEvidence && !dateMarked && field && field === fields[0]) continue;
+            if (direct && viewEvidence && !node.previousSibling) continue;
+            visibleAges.push(visibleAge);
         }
         const publicationAges = accessibleAges.length ? accessibleAges : visibleAges;
         if (publicationAges.length) age = Math.min(...publicationAges);
@@ -124,10 +140,32 @@
         if (location.pathname === '/feed/subscriptions') return 'subscriptions';
         return 'other';
     }
+    function restoreInlineDisplay(element) {
+        if (!element.hasAttribute('data-ytfc-inline-display')) return;
+        const value = element.getAttribute('data-ytfc-inline-display');
+        const priority = element.getAttribute('data-ytfc-inline-priority') || '';
+        const absent = element.getAttribute('data-ytfc-style-absent') === 'true';
+        // Do not overwrite a new display value supplied by YouTube while hidden.
+        if (element.style.getPropertyValue('display') === 'none' && element.style.getPropertyPriority('display') === 'important') {
+            if (value) element.style.setProperty('display', value, priority);
+            else element.style.removeProperty('display');
+            if (absent && !element.style.cssText) element.removeAttribute('style');
+        }
+        for (const attribute of ['data-ytfc-inline-display', 'data-ytfc-inline-priority', 'data-ytfc-style-absent']) element.removeAttribute(attribute);
+    }
+    function enforceHiddenDisplay(element) {
+        if (element.style.getPropertyValue('display') === 'none' && element.style.getPropertyPriority('display') === 'important') return;
+        element.setAttribute('data-ytfc-inline-display', element.style.getPropertyValue('display'));
+        element.setAttribute('data-ytfc-inline-priority', element.style.getPropertyPriority('display'));
+        element.setAttribute('data-ytfc-style-absent', String(!element.hasAttribute('style')));
+        // Inline !important also wins against statistics extensions' card rules.
+        element.style.setProperty('display', 'none', 'important');
+    }
     function setHidden(element, reasons, title = '', identity = '') {
         let previous = hidden.get(element);
         if (previous && previous.identity !== identity) {
             dust.cancel(element);
+            restoreInlineDisplay(element);
             element.removeAttribute('data-ytfc-hidden');
             hidden.delete(element);
             previous = null;
@@ -151,9 +189,11 @@
             if (entry.phase === 'hidden') {
                 const value = reasons.join(',');
                 if (element.getAttribute('data-ytfc-hidden') !== value) element.setAttribute('data-ytfc-hidden', value);
+                enforceHiddenDisplay(element);
             }
         } else {
             dust.cancel(element);
+            restoreInlineDisplay(element);
             if (element.hasAttribute('data-ytfc-hidden')) element.removeAttribute('data-ytfc-hidden');
             hidden.delete(element);
         }
@@ -205,7 +245,9 @@
     }
     function resetHidden() {
         dust.cancelAll();
-        for (const element of hidden.keys()) element.removeAttribute('data-ytfc-hidden');
+        for (const element of hidden.keys()) {
+            restoreInlineDisplay(element); element.removeAttribute('data-ytfc-hidden');
+        }
         hidden.clear();
     }
     function requestReplay() {

@@ -1,6 +1,6 @@
 {
   "name": "yt-feed-cleaner",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "private": true,
   "description": "Regression tests and development tooling; the extension itself needs no build.",
   "scripts": {
