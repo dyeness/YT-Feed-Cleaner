@@ -51,6 +51,21 @@ test('disabled commit tracking still advances baseline without updates', () => {
     const state = U.transition({ commitBaseline: sha('a'), commit: { id: 'old' } }, { commit: commit('b') }, '1.5.0', false);
     assert.equal(state.commitBaseline, sha('b')); assert.equal(state.commit, null); assert.deepEqual(U.available(state), []);
 });
+test('latest release ZIP remains downloadable even when already installed or acknowledged', () => {
+    const url = 'https://github.com/dyeness/YT-Feed-Cleaner/releases/download/v1.5.2/yt-feed-cleaner-1.5.2.zip';
+    const state = U.transition({}, { release: { id: 123, tag_name: 'v1.5.2', assets: [{ name: 'yt-feed-cleaner-1.5.2.zip', state: 'uploaded', browser_download_url: url }] } }, '1.5.2', true);
+    assert.equal(U.available(state).length, 0); assert.equal(U.downloadUrl(state), url);
+    assert.equal(U.downloadUrl(U.transition(state, {}, '1.5.2', true)), url);
+});
+test('download button uses GitHub latest page when metadata is unavailable or unsafe', () => {
+    for (const state of [{}, { latestRelease: { downloadUrl: 'javascript:alert(1)' } }, { latestRelease: { downloadUrl: 'https://evil.test/file.zip' } }]) assert.equal(U.downloadUrl(state), 'https://github.com/dyeness/YT-Feed-Cleaner/releases/latest');
+});
+test('malformed assets and normalized traversal URLs cannot break update checks or escape the repository', () => {
+    const state = U.transition({}, { release: { id: 1, tag_name: 'v1.5.2', assets: { invalid: true } } }, '1.5.1', true);
+    assert.equal(U.available(state).length, 1);
+    assert.equal(U.downloadUrl(state), `${U.URL}/releases/latest`);
+    assert.equal(U.downloadUrl({ latestRelease: { downloadUrl: `${U.URL}/releases/download/../../../../other/repo/file.zip` } }), `${U.URL}/releases/latest`);
+});
 test('malformed commit cannot modify a stored baseline', () => {
     assert.equal(U.transition({ commitBaseline: sha('a') }, { commit: { sha: 'fake' } }, '1.5.0', true).commitBaseline, sha('a'));
 });

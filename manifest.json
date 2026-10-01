@@ -1,12 +1,14 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "1.5.1",
+  "version": "1.5.3",
   "description": "__MSG_extDesc__",
   "default_locale": "en",
   "homepage_url": "https://github.com/dyeness/YT-Feed-Cleaner",
-  "permissions": ["storage", "alarms", "notifications"],
+  "permissions": ["storage", "alarms", "notifications", "scripting"],
   "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://youtube.com/*",
     "https://api.github.com/*",
     "https://raw.githubusercontent.com/*"
   ],

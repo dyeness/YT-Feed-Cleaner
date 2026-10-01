@@ -8,6 +8,21 @@ test('age parser only accepts isolated publication labels', () => {
     for (const [text, age] of [['2 days ago', 2], ['a week ago', 7], ['an hour ago', 1/24], ['3 дня назад', 3], ['2 недели назад', 14], ['1 неделю назад', 7], ['Премьера 2 года назад', 730], ['Streamed 2 months ago', 56], ['1 minute ago', 1/1440]]) assert.equal(F.parseAge(text), age, text);
     for (const text of ['I quit 10 years ago', '100 views 2 days ago', 'Mix', '5 лет назад — моя история', '23 просмотра', 'a long time ago', 'yesterday', '1.5 years ago', '', null]) assert.equal(F.parseAge(text), null, text);
 });
+test('Russian year and nine-month publication dates are older than a sixty-day cutoff', () => {
+    const s = settings({ oldVideoThreshold: 60 });
+    for (const [text, age] of [['1 год назад', 365], ['9 месяцев назад', 252], ['61 день назад', 61]]) {
+        assert.equal(F.parsePublicationAge(text), age, text);
+        assert.deepEqual(F.classify(facts({ age: F.parsePublicationAge(text) }), s, 'home'), ['age'], text);
+    }
+    for (const text of ['60 дней назад', '2 дня назад']) assert.deepEqual(F.classify(facts({ age: F.parsePublicationAge(text) }), s, 'home'), [], text);
+});
+test('compact Russian publication dates used by live YouTube parse to days', () => {
+    for (const [text, age] of [['9 мес. назад', 252], ['1 г. назад', 365], ['8 ч назад', 8/24], ['61 дн. назад', 61], ['2 нед. назад', 14], ['1 мин. назад', 1/1440], ['1 сек. назад', 1/86400], ['9\u00a0мес. назад', 252]]) assert.equal(F.parseAge(text), age, text);
+});
+test('publication metadata accepts bullet-separated views but not arbitrary title sentences or ambiguous dates', () => {
+    for (const text of ['125 тыс. просмотров • 9 месяцев назад', '100 views · 9 months ago', '1 год назад • 1 млн просмотров']) assert.ok(F.parsePublicationAge(text) > 60, text);
+    for (const text of ['Моя история 1 год назад', '100 views 9 months ago', '1 год назад • 9 месяцев назад', '9 месяцев назад — моя история']) assert.equal(F.parsePublicationAge(text), null, text);
+});
 test('duration and progress never confuse arbitrary numbers or pixel widths', () => {
     assert.equal(F.parseDuration(' 12:34 '), 754);
     assert.equal(F.parseDuration('1:02:03'), 3723);

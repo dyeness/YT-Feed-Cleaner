@@ -1,8 +1,9 @@
-importScripts('shared.js', 'translations.js', 'i18n.js', 'updates.js');
+importScripts('shared.js', 'translations.js', 'i18n.js', 'updates.js', 'connection.js');
 
 const F = globalThis.YTFC, U = globalThis.YTFCUpdates, I = globalThis.YTFCI18n;
 const API = `https://api.github.com/repos/${U.REPO}`;
 let inFlight = null;
+const feedBridge = globalThis.YTFCConnection.createBridge(chrome);
 
 async function ensureAlarm() {
     if (!await chrome.alarms.get('checkUpdate')) await chrome.alarms.create('checkUpdate', { periodInMinutes: 360 });
@@ -98,7 +99,10 @@ async function initialize() {
     const data = await chrome.storage.local.get({ ...F.DEFAULTS, updateState: {} });
     await renderBadge(data.updateState, F.normalizeSettings(data));
 }
-chrome.runtime.onInstalled.addListener(() => { initialize().then(checkForUpdates).catch(console.error); });
+chrome.runtime.onInstalled.addListener(() => {
+    initialize().then(checkForUpdates).catch(console.error);
+    feedBridge.ensureOpenTabs().catch(console.error);
+});
 chrome.runtime.onStartup.addListener(() => { initialize().then(checkForUpdates).catch(console.error); });
 chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === 'checkUpdate') checkForUpdates().catch(console.error); });
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -106,6 +110,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (sender.id !== chrome.runtime.id || (sender.tab && sender.url !== chrome.runtime.getURL('popup.html'))) return;
+    if (['getFeedStatus', 'toggleFeedPreview', 'replayFeedAnimation'].includes(message?.type)) {
+        feedBridge.request(message, sender).then(respond).catch(() => respond({ errorKey: 'connectionFailed' }));
+        return true;
+    }
     if (message?.type === 'checkUpdates') {
         checkForUpdates().then(state => respond({ state })).catch(error => respond({ error: error.message }));
         return true;

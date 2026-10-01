@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const F = globalThis.YTFC, U = globalThis.YTFCUpdates, I = globalThis.YTFCI18n;
     const $ = id => document.getElementById(id);
     let settings = F.normalizeSettings(), tabId, updateState = {}, feedData = null, feedErrorKey = 'openYouTube', saved = false;
+    let feedPort = null, connectedTabId = null;
     const t = (key, values) => I.translate(key, values, settings.language);
     const localizedError = error => I.formatError(error, settings.language);
     const form = $('settingsForm');
@@ -47,13 +48,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     function updateControls() {
         $('thresholdLabel').textContent = t('lblWatchThreshold', [String($('watchThreshold').value)]);
+        $('watchThreshold').style.setProperty('--progress', `${(Number($('watchThreshold').value) - 10) / 90 * 100}%`);
         $('watchThreshold').disabled = !$('hideWatched').checked;
         $('animationSpeed').disabled = !$('animateHiding').checked;
+        renderAnimationState();
+    }
+    function renderAnimationState() {
+        const animation = !settings.animateHiding ? 'off' : feedData?.animation || 'on';
+        $('animationStatus').textContent = settings.animateHiding && !feedData ? t(feedErrorKey) : t(`animation_${animation}`);
+        $('replayAnimation').disabled = !settings.animateHiding || !feedData || !feedData.count || feedData.paused || animation === 'reduced';
     }
     function renderUpdates(state) {
         state = U.transition(state, {}, chrome.runtime.getManifest().version, settings.trackCommits);
         updateState = state;
         const items = U.available(state, settings.trackCommits);
+        $('downloadRelease').href = U.downloadUrl(state);
         $('updateItems').replaceChildren();
         for (const item of items) {
             const link = document.createElement('a');
@@ -65,16 +74,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         $('dismissUpdates').hidden = !items.length;
         $('updatesTab').classList.toggle('has-updates', !!items.length);
         const locale = I.resolveLanguage(settings.language);
-        let status = state.lastSuccess ? `${t('lastCheck')}: ${new Date(state.lastSuccess).toLocaleString(locale)}` : t('notChecked');
+        let status = state.lastSuccess ? `${t('lastCheck')}: ${new Date(state.lastSuccess).toLocaleString(locale)}` : state.error ? '' : t('notChecked');
         if (state.error) {
-            const errors = state.errorDetails?.length ? state.errorDetails.map(error => t(error.key, error.values)).join(' ') : localizedError({ message: state.error });
-            status += ` · ${t('checkFailed')}: ${errors}`;
+            const errors = state.errorDetails?.length ? [...new Set(state.errorDetails.map(error => t(error.key, error.values)))].join(' · ') : localizedError({ message: state.error });
+            status += `${status ? '\n' : ''}${t('checkFailed')}: ${errors}`;
         }
-        if (state.retryAt > Date.now()) status += ` · ${t('retryAfter')}: ${new Date(state.retryAt).toLocaleTimeString(locale)}`;
+        if (state.retryAt > Date.now()) status += `\n${t('retryAfter')}: ${new Date(state.retryAt).toLocaleTimeString(locale)}`;
         $('updateStatus').textContent = status;
     }
     function renderFeed() {
         $('statsDetails').replaceChildren();
+        $('refreshStats').textContent = t(feedData ? 'refreshStats' : 'reconnectStats');
+        renderAnimationState();
         if (!feedData) {
             $('statsText').textContent = t(feedErrorKey); $('preview').disabled = true; return;
         }
@@ -91,20 +102,44 @@ document.addEventListener('DOMContentLoaded', async () => {
             $('statsDetails').appendChild(p);
         }
     }
-    async function feedStatus(toggle = false) {
-        if (!tabId) { feedData = null; feedErrorKey = 'openYouTube'; renderFeed(); return; }
-        try {
-            const status = await chrome.tabs.sendMessage(tabId, { type: toggle ? 'togglePreview' : 'feedStatus' });
-            if (!status || typeof status.count !== 'number') throw new Error('No content script');
-            feedData = status;
-        } catch { feedData = null; feedErrorKey = 'reloadYouTube'; }
-        renderFeed();
+    function closeConnection() {
+        const old = feedPort; feedPort = null; connectedTabId = null;
+        old?.disconnect();
     }
-    async function save() {
+    function connectFeed() {
+        if (!tabId || typeof chrome.tabs.connect !== 'function' || (feedPort && connectedTabId === tabId)) return;
+        closeConnection();
+        const port = chrome.tabs.connect(tabId, { name: 'ytfc-feed' });
+        feedPort = port; connectedTabId = tabId;
+        port.onMessage.addListener(status => {
+            if (feedPort !== port || status?.protocol !== 2 || typeof status.count !== 'number') return;
+            feedData = status; renderFeed();
+        });
+        port.onDisconnect.addListener(() => {
+            void chrome.runtime.lastError;
+            if (feedPort !== port) return;
+            feedPort = null; connectedTabId = null; feedData = null; feedErrorKey = 'connectionFailed'; renderFeed();
+        });
+    }
+    async function feedStatus(action = false) {
+        $('refreshStats').disabled = true;
+        try {
+            const type = action === true ? 'toggleFeedPreview' : action === 'replay' ? 'replayFeedAnimation' : 'getFeedStatus';
+            const response = await chrome.runtime.sendMessage({ type, tabId });
+            if (!response || response.errorKey || typeof response.status?.count !== 'number') {
+                feedData = null; feedErrorKey = response?.errorKey || 'connectionFailed'; closeConnection();
+            } else {
+                tabId = response.tabId; feedData = response.status; connectFeed();
+            }
+        } catch { feedData = null; feedErrorKey = 'connectionFailed'; closeConnection(); }
+        finally { $('refreshStats').disabled = false; renderFeed(); }
+    }
+    window.addEventListener('pagehide', closeConnection);
+    async function save({ quiet = false } = {}) {
         const values = {};
         for (const [key, fallback] of Object.entries(F.DEFAULTS)) values[key] = typeof fallback === 'boolean' ? $(key).checked : $(key).value;
         $('maxDuration').setCustomValidity(Number(values.minDuration) > 0 && Number(values.maxDuration) > 0 && Number(values.minDuration) > Number(values.maxDuration) ? t('invalidDuration') : '');
-        if (!form.reportValidity()) return;
+        if (!(quiet ? form.checkValidity() : form.reportValidity())) return;
         settings = F.normalizeSettings(values);
         applyAppearance();
         try {
@@ -116,14 +151,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const data = await chrome.storage.local.get({ ...F.DEFAULTS, updateState: {} });
         fill(data); renderUpdates(data.updateState);
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        tabId = tab?.id;
         $('controls').disabled = false;
         await feedStatus();
     } catch (error) { $('saveStatus').textContent = `${t('saveFailed')}: ${localizedError(error)}`; return; }
-    for (const key of Object.keys(F.DEFAULTS)) $(key).addEventListener('change', save);
+    for (const key of Object.keys(F.DEFAULTS)) {
+        const element = $(key);
+        element.addEventListener('change', save);
+        if (element.matches('input[type=number], input[type=range], textarea')) {
+            // Apply valid edits before blur or popup close. Partial invalid input
+            // must not overwrite the previous setting or show a validation popup.
+            element.addEventListener('input', () => save({ quiet: true }));
+        }
+    }
     $('watchThreshold').addEventListener('input', updateControls);
     $('preview').addEventListener('click', () => feedStatus(true));
+    $('refreshStats').addEventListener('click', () => feedStatus());
+    $('replayAnimation').addEventListener('click', () => feedStatus('replay'));
     $('checkUpdates').addEventListener('click', async () => {
         $('checkUpdates').disabled = true;
         $('updateStatus').textContent = t('checking');
@@ -152,7 +195,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const appearanceKeys = ['language', 'textSize', 'animateHiding', 'animationSpeed', 'respectReducedMotion'];
         if (appearanceKeys.some(key => key in changes)) {
             const next = { ...settings };
-            for (const key of appearanceKeys) if (key in changes) next[key] = changes[key].newValue;
+            for (const key of appearanceKeys) {
+                // Do not discard a checkbox/select edit still awaiting the save debounce
+                // when another appearance preference changes in a different context.
+                next[key] = key in changes ? changes[key].newValue : typeof F.DEFAULTS[key] === 'boolean' ? $(key).checked : $(key).value;
+            }
             settings = F.normalizeSettings(next);
             for (const key of appearanceKeys) {
                 if (typeof settings[key] === 'boolean') $(key).checked = settings[key];

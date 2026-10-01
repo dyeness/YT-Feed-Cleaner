@@ -6,6 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const root = path.join(__dirname, '..');
+const extensionRoot = process.env.YTFC_EXTENSION_ROOT ? path.resolve(process.env.YTFC_EXTENSION_ROOT) : root;
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'ytfc-smoke-'));
 const video = (id, href, title, extras = '') => `<ytd-rich-item-renderer id="${id}"><a id="thumbnail" href="${href}">Thumbnail</a><a id="video-title" href="${href}">${title}</a>${extras}</ytd-rich-item-renderer>`;
 (async () => {
@@ -13,14 +14,14 @@ const video = (id, href, title, extras = '') => `<ytd-rich-item-renderer id="${i
     try {
         context = await chromium.launchPersistentContext(profile, {
             channel: 'chromium', headless: true, viewport: { width: 800, height: 1000 },
-            args: [`--disable-extensions-except=${root}`, `--load-extension=${root}`]
+            args: [`--disable-extensions-except=${extensionRoot}`, `--load-extension=${extensionRoot}`]
         });
         await context.route('https://www.youtube.com/**', route => route.fulfill({ contentType: 'text/html', body: `<!DOCTYPE html><html><body>
             ${video('ordinary', '/watch?v=normal', 'Mix — 10 years ago', '<div id="metadata-line"><span>1 day ago</span></div>')}
             ${video('rdvideo', '/watch?v=normal&list=RDnormal', 'Normal video in autoplay')}
             ${video('short', '/shorts/short', 'A short')}
             ${video('old', '/watch?v=old', 'Old video', '<div id="metadata-line"><span>2 years ago</span></div>')}
-            ${video('watched', '/watch?v=watched', 'Watched video', '<ytd-thumbnail-overlay-resume-playback-renderer><div id="progress" style="width:80%"></div></ytd-thumbnail-overlay-resume-playback-renderer>')}
+            <ytd-rich-item-renderer id="watched"><yt-lockup-view-model><a class="ytLockupViewModelContentImage" href="/watch?v=watched">Thumbnail</a><h3 class="ytLockupMetadataViewModelTitle"><a href="/watch?v=watched">Watched video</a></h3><yt-thumbnail-overlay-progress-bar-view-model><div class="YtThumbnailOverlayProgressBarHostWatchedProgressBar"><div class="YtThumbnailOverlayProgressBarHostWatchedProgressBarSegmentModern" style="width:80%"></div></div></yt-thumbnail-overlay-progress-bar-view-model></yt-lockup-view-model></ytd-rich-item-renderer>
             <ytd-radio-renderer id="mix" style="display:flex"><a id="thumbnail" href="/watch?v=mix&list=RDmix">Actual Mix</a></ytd-radio-renderer>
             </body></html>` }));
         const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
@@ -31,7 +32,7 @@ const video = (id, href, title, extras = '') => `<ytd-rich-item-renderer id="${i
             // Wait for any installation-time check before replacing network transport.
             await checkForUpdates();
             globalThis.fetch = async url => {
-                if (url.endsWith('/releases/latest')) return new Response(JSON.stringify({ id: 123, tag_name: 'v1.6.0' }));
+                if (url.endsWith('/releases/latest')) return new Response(JSON.stringify({ id: 123, tag_name: 'v1.6.0', assets: [{ name: 'yt-feed-cleaner-1.6.0.zip', state: 'uploaded', browser_download_url: 'https://github.com/dyeness/YT-Feed-Cleaner/releases/download/v1.6.0/yt-feed-cleaner-1.6.0.zip' }] }));
                 if (url.endsWith('/commits/trunk')) return new Response(JSON.stringify({ sha: 'b'.repeat(40), commit: { message: 'New commit' } }));
                 if (url.includes('raw.githubusercontent.com')) return new Response(JSON.stringify({ version: '1.6.0' }));
                 return new Response(JSON.stringify({ default_branch: 'trunk' }));
@@ -48,6 +49,17 @@ const video = (id, href, title, extras = '') => `<ytd-rich-item-renderer id="${i
         assert.equal(await page.locator('#mix').isVisible(), false);
         const [youtubeTab] = await worker.evaluate(() => chrome.tabs.query({ active: true, currentWindow: true }));
         console.log('PASS: actual content-script injection, CSS hiding and false-positive fixtures');
+        assert.equal(await page.locator('#watched').getAttribute('data-ytfc-hidden'), 'watched');
+        assert.equal((await worker.evaluate(id => chrome.tabs.sendMessage(id, { type: 'feedStatus' }), youtubeTab.id)).counts.watched, 1);
+        await worker.evaluate(() => chrome.storage.local.set({ watchThreshold: 90 }));
+        await page.waitForFunction(() => !document.querySelector('#watched').hasAttribute('data-ytfc-hidden'));
+        await worker.evaluate(() => chrome.storage.local.set({ watchThreshold: 70 }));
+        await page.waitForFunction(() => document.querySelector('#watched').hasAttribute('data-ytfc-hidden'));
+        await page.locator('#watched .YtThumbnailOverlayProgressBarHostWatchedProgressBarSegmentModern').evaluate(bar => { bar.style.width = '20%'; });
+        await page.waitForFunction(() => !document.querySelector('#watched').hasAttribute('data-ytfc-hidden'));
+        await page.locator('#watched .YtThumbnailOverlayProgressBarHostWatchedProgressBarSegmentModern').evaluate(bar => { bar.style.width = '80%'; });
+        await page.waitForFunction(() => document.querySelector('#watched').hasAttribute('data-ytfc-hidden'));
+        console.log('PASS: modern camelCase lockup, watched-fill classes, threshold and progress changes');
         await page.locator('#short a').evaluateAll(anchors => anchors.forEach(anchor => anchor.setAttribute('href', '/watch?v=reused')));
         await page.waitForFunction(() => !document.querySelector('#short').hasAttribute('data-ytfc-hidden'));
         assert.equal(await page.locator('#short').isVisible(), true);
@@ -61,6 +73,31 @@ const video = (id, href, title, extras = '') => `<ytd-rich-item-renderer id="${i
         popup.on('pageerror', error => errors.push(error.message));
         await popup.goto(`chrome-extension://${extensionId}/popup.html`);
         await popup.waitForFunction(() => !document.getElementById('controls').disabled);
+        await popup.waitForFunction(() => document.getElementById('statsText').textContent === 'Hidden on this page: 3', null, { timeout: 10000 }).catch(async error => {
+            console.error('Stats diagnostics:', await popup.locator('#statsText').textContent(), await worker.evaluate(async () => ({ tabs: await chrome.tabs.query({ active: true, currentWindow: true }), result: await feedBridge.request({ type: 'getFeedStatus' }) })), errors);
+            throw error;
+        });
+        await page.evaluate(() => {
+            window.__fixtureToken = 'no-reload';
+            document.body.insertAdjacentHTML('beforeend', '<ytd-rich-item-renderer id="liveShort"><a id="thumbnail" href="/shorts/live">Live stats fixture</a></ytd-rich-item-renderer>');
+        });
+        await popup.waitForFunction(() => document.getElementById('statsText').textContent === 'Hidden on this page: 4');
+        await popup.locator('#preview').click();
+        await popup.waitForFunction(() => document.getElementById('statsText').textContent.startsWith('Preview:'));
+        assert.equal(await page.locator('[data-ytfc-hidden]').count(), 0);
+        await popup.locator('#preview').click();
+        await popup.waitForFunction(() => document.getElementById('statsText').textContent === 'Hidden on this page: 4');
+        await worker.evaluate(async id => {
+            await chrome.scripting.executeScript({ target: { tabId: id }, func: () => { globalThis.__YTFCContent.dispose(); delete globalThis.__YTFCContent; } });
+        }, youtubeTab.id);
+        await popup.waitForFunction(() => document.getElementById('preview').disabled);
+        await popup.locator('#refreshStats').click();
+        await popup.waitForFunction(() => document.getElementById('statsText').textContent === 'Hidden on this page: 4');
+        assert.equal(await page.evaluate(() => window.__fixtureToken), 'no-reload');
+        assert.equal(await page.locator('style[data-ytfc-style]').count(), 1);
+        assert.equal(await popup.locator('#watchThreshold').getAttribute('step'), '10');
+        assert.equal(await popup.locator('section').first().evaluate(element => getComputedStyle(element).borderRadius), '2px');
+        console.log('PASS: real popup statistics, live updates, correct target tab and recovery without reload');
         await popup.locator('#hideLive').check();
         await popup.waitForFunction(() => document.getElementById('saveStatus').textContent.length > 0);
         assert.equal(await worker.evaluate(async () => (await chrome.storage.local.get('hideLive')).hideLive), true);
@@ -75,6 +112,16 @@ const video = (id, href, title, extras = '') => `<ytd-rich-item-renderer id="${i
         await popup.locator('#checkUpdates').click();
         await popup.waitForFunction(() => !document.getElementById('checkUpdates').disabled);
         assert.equal(await popup.locator('.update-item').count(), 0);
+        const download = 'https://github.com/dyeness/YT-Feed-Cleaner/releases/download/v1.6.0/yt-feed-cleaner-1.6.0.zip';
+        assert.equal(await popup.locator('#downloadRelease').getAttribute('href'), download);
+        await worker.evaluate(async () => {
+            const original = globalThis.fetch;
+            globalThis.fetch = async () => { throw new TypeError('Failed to fetch'); };
+            try { await checkForUpdates(); } finally { globalThis.fetch = original; }
+        });
+        await popup.waitForFunction(() => document.getElementById('updateStatus').textContent.includes('Check failed'));
+        assert.equal(await popup.locator('#downloadRelease').getAttribute('href'), download);
+        console.log('PASS: latest-release download survives acknowledgements and API network failures');
         fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
         await popup.locator('#appearanceTab').click();
         await popup.locator('#language').selectOption('ru');
@@ -90,6 +137,12 @@ const video = (id, href, title, extras = '') => `<ytd-rich-item-renderer id="${i
         await popup.locator('#animateHiding').check();
         await popup.locator('#animationSpeed').selectOption('slow');
         await popup.waitForFunction(() => document.getElementById('animationSpeed').value === 'slow');
+        await worker.evaluate(() => chrome.storage.local.set({ respectReducedMotion: false }));
+        await page.bringToFront();
+        await page.waitForFunction(() => !!document.querySelector('[data-ytfc-dissolving]'));
+        await page.waitForFunction(() => !document.querySelector('[data-ytfc-dust]'));
+        assert.equal(await page.locator('[data-ytfc-hidden]').count(), 4);
+        console.log('PASS: enabling animation replays already-hidden cards on return to YouTube');
         await worker.evaluate(async () => {
             await chrome.storage.local.set({ enabled: false, animateHiding: true, animationSpeed: 'slow', respectReducedMotion: false });
         });
@@ -128,15 +181,66 @@ const video = (id, href, title, extras = '') => `<ytd-rich-item-renderer id="${i
         await popup.bringToFront();
         await popup.setViewportSize({ width: 460, height: 600 });
         await popup.locator('#textSize').selectOption('large');
-        await popup.screenshot({ path: path.join(root, 'dist', 'appearance-ru-preview.png'), fullPage: true });
+        await popup.screenshot({ path: path.join(root, 'dist', 'appearance-ru-preview.png'), fullPage: true, animations: 'disabled' });
         await popup.locator('#language').selectOption('en');
         await popup.waitForFunction(() => document.documentElement.lang === 'en');
         assert.equal(await popup.locator('h1').textContent(), 'YouTube Cleaner');
-        await popup.screenshot({ path: path.join(root, 'dist', 'appearance-en-preview.png'), fullPage: true });
+        await popup.screenshot({ path: path.join(root, 'dist', 'appearance-en-preview.png'), fullPage: true, animations: 'disabled' });
         await popup.locator('#updatesTab').click();
-        await popup.screenshot({ path: path.join(root, 'dist', 'updates-preview.png'), fullPage: true });
+        await popup.screenshot({ path: path.join(root, 'dist', 'updates-preview.png'), fullPage: true, animations: 'disabled' });
         await popup.locator('#filtersTab').click();
-        await popup.screenshot({ path: path.join(root, 'dist', 'popup-preview.png'), fullPage: true });
+        await popup.screenshot({ path: path.join(root, 'dist', 'popup-preview.png'), fullPage: true, animations: 'disabled' });
+        await popup.locator('#appearanceTab').click();
+        await popup.locator('#language').selectOption('ru');
+        await popup.waitForFunction(() => document.documentElement.lang === 'ru');
+        await popup.locator('#updatesTab').click();
+        await popup.screenshot({ path: path.join(root, 'dist', 'updates-ru-preview.png'), fullPage: true, animations: 'disabled' });
+        await popup.locator('#filtersTab').click();
+        await popup.screenshot({ path: path.join(root, 'dist', 'filters-ru-preview.png'), fullPage: true, animations: 'disabled' });
+        await context.route('https://www.youtube.com/?ytfc-age-test=1', route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' + [
+            ['year', '1 г. назад', '1 год назад'], ['months', '9 мес. назад', '9 месяцев назад'], ['fresh', '2 дн. назад', '2 дня назад'], ['boundary', '60 дн. назад', '60 дней назад']
+        ].map(([id, text, label]) => `<ytd-rich-item-renderer id="${id}"><yt-lockup-view-model><a class="ytLockupViewModelContentImage" href="/watch?v=${id}">Thumbnail</a><h3 class="ytLockupMetadataViewModelTitle">${id}</h3><yt-content-metadata-view-model><div class="ytContentMetadataViewModelMetadataRow" role="group"><span class="ytContentMetadataViewModelMetadataText">YouTube</span><span class="ytContentMetadataViewModelMetadataText" aria-label="316 тысяч просмотров">316 тыс.</span><span class="ytAttributedStringHost ytContentMetadataViewModelMetadataText ytContentMetadataViewModelMetadataTextLastPart" role="text" aria-label="${label}">${text}</span></div></yt-content-metadata-view-model></yt-lockup-view-model></ytd-rich-item-renderer>`).join('') + '</body></html>' }));
+        await worker.evaluate(() => chrome.storage.local.set({ oldVideoThreshold: 60, hideWatched: false, hideJams: false, hideShortsHome: false }));
+        const agePage = await context.newPage(); agePage.on('pageerror', error => errors.push(error.message));
+        await agePage.goto('https://www.youtube.com/?ytfc-age-test=1');
+        await agePage.waitForFunction(() => document.querySelectorAll('[data-ytfc-hidden]').length === 2).catch(async error => {
+            console.error('Age diagnostics:', await agePage.evaluate(() => ({ url: location.href, hidden: [...document.querySelectorAll('[data-ytfc-hidden]')].map(n => ({ id: n.id, reasons: n.getAttribute('data-ytfc-hidden') })), metadata: [...document.querySelectorAll('yt-content-metadata-view-model')].map(n => n.outerHTML) })), await worker.evaluate(async () => ({ settings: await chrome.storage.local.get(), tabs: await chrome.tabs.query({ active: true, currentWindow: true }) })));
+            throw error;
+        });
+        assert.equal(await agePage.locator('#year').getAttribute('data-ytfc-hidden'), 'age');
+        assert.equal(await agePage.locator('#months').getAttribute('data-ytfc-hidden'), 'age');
+        assert.equal(await agePage.locator('#fresh').isVisible(), true);
+        assert.equal(await agePage.locator('#boundary').isVisible(), true);
+        const agePopup = await context.newPage(); agePopup.on('pageerror', error => errors.push(error.message));
+        await agePopup.goto(`chrome-extension://${extensionId}/popup.html`);
+        await agePopup.waitForFunction(() => !document.getElementById('controls').disabled);
+        await agePopup.locator('#oldVideoThreshold').fill('365');
+        await agePage.waitForFunction(() => document.querySelectorAll('[data-ytfc-hidden]').length === 0);
+        assert.equal(await agePopup.locator('#oldVideoThreshold').evaluate(node => document.activeElement === node), true);
+        await agePopup.locator('#oldVideoThreshold').fill('60');
+        await agePage.waitForFunction(() => document.querySelectorAll('[data-ytfc-hidden]').length === 2).catch(async error => {
+            console.error('Age diagnostics:', await agePage.evaluate(() => ({ url: location.href, hidden: [...document.querySelectorAll('[data-ytfc-hidden]')].map(n => ({ id: n.id, reasons: n.getAttribute('data-ytfc-hidden') })), metadata: [...document.querySelectorAll('yt-content-metadata-view-model')].map(n => n.outerHTML) })), await worker.evaluate(async () => ({ settings: await chrome.storage.local.get(), tabs: await chrome.tabs.query({ active: true, currentWindow: true }) })));
+            throw error;
+        });
+        assert.equal(await worker.evaluate(async () => (await chrome.storage.local.get('oldVideoThreshold')).oldVideoThreshold), 60);
+        await agePopup.locator('#oldVideoThreshold').fill('365');
+        await agePopup.close();
+        await agePage.waitForFunction(() => document.querySelectorAll('[data-ytfc-hidden]').length === 0);
+        assert.equal(await worker.evaluate(async () => (await chrome.storage.local.get('oldVideoThreshold')).oldVideoThreshold), 365);
+        await worker.evaluate(() => chrome.storage.local.set({ oldVideoThreshold: 60 }));
+        await agePage.bringToFront();
+        await agePage.waitForFunction(() => document.querySelectorAll('[data-ytfc-hidden]').length === 2);
+        console.log('PASS: day cutoff applies while typing and survives immediately closing the popup');
+        await agePage.locator('#months [aria-label="9 месяцев назад"]').evaluate(node => { node.textContent = '2 дн. назад'; node.setAttribute('aria-label', '2 дня назад'); });
+        await agePage.waitForFunction(() => document.querySelectorAll('[data-ytfc-hidden]').length === 1);
+        const [ageTab] = await worker.evaluate(() => chrome.tabs.query({ active: true, currentWindow: true }));
+        const versionBefore = await worker.evaluate(() => chrome.runtime.getManifest().version);
+        await worker.evaluate(id => chrome.scripting.executeScript({ target: { tabId: id }, func: () => { globalThis.YTFC.CONTENT_REVISION = 0; globalThis.__YTFCContent.contentRevision = 0; } }), ageTab.id);
+        const recovered = await worker.evaluate(id => feedBridge.request({ type: 'getFeedStatus', tabId: id }), ageTab.id);
+        assert.equal(recovered.status.count, 1); assert.equal(recovered.status.contentRevision, 1);
+        assert.equal(recovered.status.version, versionBefore);
+        assert.equal(await agePage.locator('style[data-ytfc-style]').count(), 1);
+        console.log('PASS: 60 days hides 1 year / 9 months in real compact metadata shape, preserves fresh/boundary dates and recovers without version bump');
         assert.deepEqual(errors, []);
         console.log('PASS: real service worker update checks, badge and persistent acknowledgement');
     } finally {

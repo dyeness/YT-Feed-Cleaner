@@ -83,7 +83,7 @@
       "message": "Hide titles containing"
     },
     "keywordsHint": {
-      "message": "One phrase per line, case-insensitive. Plain text, not regular expressions."
+      "message": "One phrase per line, case-insensitive."
     },
     "blockedChannels": {
       "message": "Hide channels"
@@ -92,7 +92,7 @@
       "message": "Never hide channels"
     },
     "channelsHint": {
-      "message": "One exact channel name, @handle or channel URL per line. Exceptions override every filter; unknown channels cannot match."
+      "message": "One exact name, @handle or channel URL per line."
     },
     "safeHint": {
       "message": "Unknown metadata never triggers a filter. Age: English/Russian publication labels only; conservative month estimates. Duration bounds are inclusive."
@@ -145,13 +145,13 @@
       "message": "Preview: everything is visible in this tab"
     },
     "openYouTube": {
-      "message": "Open a YouTube tab to see statistics"
+      "message": "Open YouTube"
     },
     "reloadYouTube": {
       "message": "Open / reload YouTube to see statistics"
     },
     "saved": {
-      "message": "Settings saved · applied without reloading YouTube"
+      "message": "Saved"
     },
     "saveFailed": {
       "message": "Could not save settings"
@@ -175,7 +175,7 @@
       "message": "No successful check yet"
     },
     "checkFailed": {
-      "message": "Check failed (known updates are preserved)"
+      "message": "Check failed"
     },
     "retryAfter": {
       "message": "Retry after"
@@ -226,7 +226,7 @@
       "message": "Appearance"
     },
     "appearanceTitle": {
-      "message": "Language and appearance"
+      "message": "Settings"
     },
     "languageLabel": {
       "message": "Interface language"
@@ -304,6 +304,33 @@
     },
     "operationError": {
       "message": "The operation failed. Please try again."
+    },
+    "downloadRelease": {
+      "message": "Download latest release"
+    },
+    "refreshStats": {
+      "message": "Refresh"
+    },
+    "reconnectStats": {
+      "message": "Connect"
+    },
+    "connectionFailed": {
+      "message": "Cannot connect to the YouTube tab."
+    },
+    "replayAnimation": {
+      "message": "Replay effect"
+    },
+    "animation_off": {
+      "message": "Animation off"
+    },
+    "animation_on": {
+      "message": "Animation on"
+    },
+    "animation_reduced": {
+      "message": "Animation disabled by the OS preference"
+    },
+    "animation_background": {
+      "message": "The effect starts when you return to YouTube"
     }
   },
   "ru": {
@@ -388,7 +415,7 @@
       "message": "Скрывать заголовки с фразами"
     },
     "keywordsHint": {
-      "message": "По одной фразе на строку, без учёта регистра. Обычный текст, не регулярные выражения."
+      "message": "Одна фраза на строку, без учёта регистра."
     },
     "blockedChannels": {
       "message": "Скрывать каналы"
@@ -397,7 +424,7 @@
       "message": "Никогда не скрывать каналы"
     },
     "channelsHint": {
-      "message": "Точное название, @псевдоним или URL канала — по одному на строку. Исключения важнее всех фильтров; неизвестный канал не считается совпадением."
+      "message": "Точное имя, @псевдоним или URL — по одному на строку."
     },
     "safeHint": {
       "message": "Неизвестные метаданные не вызывают скрытие. Возраст — только по дате публикации на русском/английском; месяцы оцениваются консервативно. Границы длительности включены."
@@ -450,13 +477,13 @@
       "message": "Просмотр: в этой вкладке всё показано"
     },
     "openYouTube": {
-      "message": "Откройте YouTube для просмотра статистики"
+      "message": "Откройте YouTube"
     },
     "reloadYouTube": {
       "message": "Откройте / перезагрузите YouTube для статистики"
     },
     "saved": {
-      "message": "Сохранено · применяется без перезагрузки YouTube"
+      "message": "Сохранено"
     },
     "saveFailed": {
       "message": "Не удалось сохранить настройки"
@@ -480,7 +507,7 @@
       "message": "Успешных проверок ещё не было"
     },
     "checkFailed": {
-      "message": "Ошибка проверки (известные обновления сохранены)"
+      "message": "Ошибка проверки"
     },
     "retryAfter": {
       "message": "Повторить после"
@@ -531,7 +558,7 @@
       "message": "Интерфейс"
     },
     "appearanceTitle": {
-      "message": "Язык и оформление"
+      "message": "Настройки"
     },
     "languageLabel": {
       "message": "Язык интерфейса"
@@ -609,6 +636,33 @@
     },
     "operationError": {
       "message": "Операция не выполнена. Попробуйте ещё раз."
+    },
+    "downloadRelease": {
+      "message": "Скачать последний релиз"
+    },
+    "refreshStats": {
+      "message": "Обновить"
+    },
+    "reconnectStats": {
+      "message": "Подключить"
+    },
+    "connectionFailed": {
+      "message": "Нет связи со вкладкой YouTube."
+    },
+    "replayAnimation": {
+      "message": "Повторить эффект"
+    },
+    "animation_off": {
+      "message": "Анимация выключена"
+    },
+    "animation_on": {
+      "message": "Анимация включена"
+    },
+    "animation_reduced": {
+      "message": "Анимация отключена настройкой ОС"
+    },
+    "animation_background": {
+      "message": "Эффект начнётся при переходе на YouTube"
     }
   }
 };

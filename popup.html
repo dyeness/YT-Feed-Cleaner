@@ -18,7 +18,7 @@
             <button type="button" id="appearanceTab" role="tab" aria-selected="false" aria-controls="appearancePanel" tabindex="-1" data-i18n="appearanceTab">Appearance</button>
         </nav>
         <div id="filtersPanel" role="tabpanel" aria-labelledby="filtersTab">
-        <section class="status" aria-live="polite"><strong id="statsText"></strong><button type="button" id="preview" data-i18n="showHidden">Show hidden temporarily</button><details id="reasons"><summary data-i18n="whyHidden">Why were these hidden?</summary><div id="statsDetails"></div></details></section>
+        <section class="status" aria-live="polite"><strong id="statsText"></strong><div class="buttons"><button type="button" id="preview" data-i18n="showHidden">Show hidden</button><button type="button" id="refreshStats" data-i18n="refreshStats">Refresh</button></div><details id="reasons"><summary data-i18n="whyHidden">Hidden reasons</summary><div id="statsDetails"></div></details></section>
         <section>
             <h2 data-i18n="contentTypes">Content types</h2>
             <label class="row"><input type="checkbox" id="hideJams"><span data-i18n="optHideJams">Hide Mixes</span></label>
@@ -36,7 +36,7 @@
                 <label><input type="checkbox" id="filterSubscriptions"><span data-i18n="subscriptions">Subscriptions</span></label>
             </div>
             <label class="row"><input type="checkbox" id="hideWatched"><span data-i18n="optHideWatched">Watched videos</span></label>
-            <label class="field" for="watchThreshold"><span id="thresholdLabel"></span><input type="range" id="watchThreshold" min="1" max="100" step="1"></label>
+            <label class="field" for="watchThreshold"><span id="thresholdLabel"></span><input type="range" id="watchThreshold" min="10" max="100" step="10"></label>
             <label class="field"><span data-i18n="ageDays">Hide older than (days; 0 = off)</span><input type="number" id="oldVideoThreshold" min="0" max="100000" step="1"></label>
             <div class="two-columns">
                 <label class="field"><span data-i18n="minDuration">Minimum minutes (0 = off)</span><input type="number" id="minDuration" min="0" max="100000" step="0.1"></label>
@@ -52,17 +52,16 @@
                 <label class="field"><span data-i18n="allowedChannels">Never hide channels</span><textarea id="allowedChannels" rows="3" maxlength="10000"></textarea></label>
                 <p class="hint" data-i18n="channelsHint">One exact channel name, @handle or channel URL per line. Exceptions override every filter; unknown channels cannot match.</p>
             </details>
-            <p class="hint" data-i18n="safeHint">Unknown metadata never triggers a filter. Age: English/Russian publication labels only, with conservative month estimates.</p>
         </section>
         </div>
         <section id="updatesPanel" role="tabpanel" aria-labelledby="updatesTab" hidden>
             <h2 data-i18n="updates">GitHub updates</h2>
+            <a id="downloadRelease" class="button primary" href="https://github.com/dyeness/YT-Feed-Cleaner/releases/latest" target="_blank" rel="noopener noreferrer" data-i18n="downloadRelease">Download latest release</a>
             <label class="row"><input type="checkbox" id="updateNotifications"><span data-i18n="notifications">Desktop notifications</span></label>
             <label class="row"><input type="checkbox" id="trackCommits"><span data-i18n="trackCommits">Also notify about new commits</span></label>
             <div id="updateItems" aria-live="polite"></div>
             <p id="updateStatus" class="hint"></p>
             <div class="buttons"><button type="button" id="checkUpdates" data-i18n="checkNow">Check now</button><button type="button" id="dismissUpdates" data-i18n="dismissUpdates" hidden>Mark as seen</button></div>
-            <p class="hint" data-i18n="manualUpdate">Checks every 6 hours. Updates are installed manually; a commit is not a released version.</p>
         </section>
         <section id="appearancePanel" role="tabpanel" aria-labelledby="appearanceTab" hidden>
             <h2 data-i18n="appearanceTitle">Language and appearance</h2>
@@ -76,7 +75,6 @@
                 <option value="large" data-i18n="textLarge">Large — 18 px</option>
                 <option value="extra" data-i18n="textExtra">Extra large — 20 px</option>
             </select></label>
-            <p class="hint" data-i18n="appearanceHint">Language changes immediately and applies to notifications.</p>
             <label class="row"><input type="checkbox" id="animateHiding"><span data-i18n="animateHidingLabel">Disintegrate videos when hiding</span></label>
             <label class="field"><span data-i18n="animationSpeedLabel">Disintegration speed</span><select id="animationSpeed">
                 <option value="fast" data-i18n="animationFast">Fast — 0.45 s</option>
@@ -84,9 +82,8 @@
                 <option value="slow" data-i18n="animationSlow">Slow — 1.2 s</option>
             </select></label>
             <label class="row"><input type="checkbox" id="respectReducedMotion"><span data-i18n="respectReducedMotionLabel">Respect reduced motion in the OS</span></label>
-            <p class="hint" data-i18n="animationHint">Animation is off by default. Disabling a filter cancels the effect.</p>
-            <p class="hint" data-i18n="motionHint">The effect is skipped when the OS requests reduced motion.</p>
-            <p class="hint" data-i18n="iconHint">The interface uses SVG; Chrome toolbar icons require PNG copies.</p>
+            <div class="buttons"><button type="button" id="replayAnimation" data-i18n="replayAnimation">Replay effect</button></div>
+            <p id="animationStatus" class="hint" aria-live="polite"></p>
         </section>
         <footer><a href="https://github.com/dyeness/YT-Feed-Cleaner" target="_blank" rel="noopener noreferrer" data-i18n="githubLink">GitHub</a><button type="button" id="reset" data-i18n="reset">Reset filters</button></footer>
     </fieldset>

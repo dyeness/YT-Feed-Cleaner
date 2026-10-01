@@ -4,10 +4,28 @@
     const F = root.YTFC || (typeof require === 'function' ? require('./shared.js') : null);
     const REPO = 'dyeness/YT-Feed-Cleaner';
     const URL = `https://github.com/${REPO}`;
+    function safeDownload(candidate) {
+        try {
+            const parsed = new root.URL(candidate);
+            if (parsed.origin === 'https://github.com' && !parsed.username && !parsed.password && parsed.pathname.startsWith(`/${REPO}/releases/download/`) && parsed.pathname.endsWith('.zip')) return parsed.href;
+        } catch { /* Untrusted or incomplete release metadata. */ }
+        return null;
+    }
+    function downloadUrl(state = {}) {
+        return safeDownload(state.latestRelease?.downloadUrl) || `${URL}/releases/latest`;
+    }
+    function releaseInfo(release) {
+        if (!release) return null;
+        const version = String(release.tag_name || '').replace(/^v/, '');
+        const assets = Array.isArray(release.assets) ? release.assets : [];
+        const asset = assets.find(item => item?.name === `yt-feed-cleaner-${version}.zip` && (!item.state || item.state === 'uploaded'));
+        return { version: release.tag_name, downloadUrl: safeDownload(asset?.browser_download_url) || `${URL}/releases/latest` };
+    }
     function transition(previous, snapshot, localVersion, trackCommits) {
         const next = { ...previous };
         if (Object.hasOwn(snapshot, 'release')) {
             const release = snapshot.release;
+            next.latestRelease = releaseInfo(release);
             if (release && F.isNewerVersion(localVersion, release.tag_name)) {
                 next.release = { id: `release:${release.id}`, version: release.tag_name, url: `${URL}/releases/tag/${encodeURIComponent(release.tag_name)}` };
             } else next.release = null;
@@ -34,7 +52,7 @@
         const version = state.release || state.version;
         return [version, trackCommits ? state.commit : null].filter(item => item && item.id !== state.dismissedVersion && item.id !== state.dismissedCommit);
     }
-    const api = { REPO, URL, transition, available };
+    const api = { REPO, URL, transition, available, downloadUrl };
     root.YTFCUpdates = api;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

@@ -26,19 +26,27 @@
         for (const [key, choices] of Object.entries({ language: ['auto', 'ru', 'en'], textSize: ['normal', 'large', 'extra'], animationSpeed: ['fast', 'normal', 'slow'] })) {
             if (!choices.includes(result[key])) result[key] = DEFAULTS[key];
         }
+        // Migrate old 1%-step values upwards so an update never hides more watched videos.
+        result.watchThreshold = Math.ceil(Math.max(10, result.watchThreshold) / 10) * 10;
         return result;
     }
     const normalizeText = text => String(text || '').normalize('NFKC').trim().toLocaleLowerCase().replace(/\s+/g, ' ');
     const lines = text => String(text || '').split(/\r?\n/).map(normalizeText).filter(Boolean);
     function parseAge(text) {
         // Only a publication metadata item, never a title, aria-label or combined view count.
-        const match = normalizeText(text).match(/^(?:(?:streamed|premiered)\s+|(?:трансляция|премьера)\s+)?(\d+|a|an|one|один|одна|одну)\s+(seconds?|minutes?|hours?|days?|weeks?|months?|years?|секунд[ауы]?|минут[ауы]?|час(?:а|ов)?|день|дня|дней|недел[яьиью]+|месяц(?:а|ев)?|год(?:а)?|лет)\s+(?:ago|назад)$/u);
+        const match = normalizeText(text).match(/^(?:(?:streamed|premiered)\s+|(?:трансляция|премьера)\s+)?(\d+|a|an|one|один|одна|одну)\s+(seconds?|minutes?|hours?|days?|weeks?|months?|years?|секунд[ауы]?|сек\.?|минут[ауы]?|мин\.?|час(?:а|ов)?|ч\.?|день|дня|дней|дн\.?|недел[яьиью]+|нед\.?|месяц(?:а|ев)?|мес\.?|год(?:а)?|лет|г\.?)\s+(?:ago|назад)$/u);
         if (!match) return null;
         const value = /^\d+$/.test(match[1]) ? Number(match[1]) : 1;
         const unit = match[2];
         // Conservative lower bound for rounded month/year labels.
-        const factor = /^(year|год|лет)/.test(unit) ? 365 : /^(month|месяц)/.test(unit) ? 28 : /^(week|недел)/.test(unit) ? 7 : /^(day|день|дня|дней)/.test(unit) ? 1 : /^(hour|час)/.test(unit) ? 1 / 24 : /^(minute|минут)/.test(unit) ? 1 / 1440 : 1 / 86400;
+        const factor = /^(year|год|лет|г\.?$)/.test(unit) ? 365 : /^(month|месяц|мес)/.test(unit) ? 28 : /^(week|недел|нед)/.test(unit) ? 7 : /^(day|день|дня|дней|дн)/.test(unit) ? 1 : /^(hour|час|ч\.?$)/.test(unit) ? 1 / 24 : /^(minute|минут|мин)/.test(unit) ? 1 / 1440 : 1 / 86400;
         return value * factor;
+    }
+    function parsePublicationAge(text) {
+        // Only called for publication metadata, never a title/description. YouTube
+        // can combine views and the date in one attributed string separated by •.
+        const ages = normalizeText(text).split(/\s*[•·∙⋅]\s*/u).map(parseAge).filter(age => age !== null);
+        return ages.length === 1 ? ages[0] : null;
     }
     function parseDuration(text) {
         const value = String(text || '').trim();
@@ -107,7 +115,7 @@
         }
         return false;
     }
-    const api = { DEFAULTS, normalizeSettings, normalizeText, lines, parseAge, parseDuration, parseProgress, channelMatches, classify, parseVersion, isNewerVersion };
+    const api = { CONTENT_REVISION: 1, DEFAULTS, normalizeSettings, normalizeText, lines, parseAge, parsePublicationAge, parseDuration, parseProgress, channelMatches, classify, parseVersion, isNewerVersion };
     root.YTFC = api;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

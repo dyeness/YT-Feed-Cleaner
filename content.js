@@ -2,13 +2,32 @@
 (() => {
     'use strict';
     const F = globalThis.YTFC;
+    const version = chrome.runtime.getManifest?.().version || 'test';
+    const existing = globalThis.__YTFCContent;
+    if (existing?.version === version && existing.contentRevision === F.CONTENT_REVISION && existing.alive) return;
+    existing?.dispose?.();
+    // Drop stale extension-owned markers left by an invalidated content world.
+    document.querySelectorAll('[data-ytfc-hidden], [data-ytfc-dissolving]').forEach(element => {
+        element.removeAttribute('data-ytfc-hidden'); element.removeAttribute('data-ytfc-dissolving');
+    });
+    document.querySelectorAll('[data-ytfc-dust], style[data-ytfc-style]').forEach(element => element.remove());
+    let alive = true, scheduleTimer = null, replayRequested = false, lastPublished = '';
+    const ports = new Set(), cleanup = [];
+    let resolveReady;
+    const bootReady = new Promise(resolve => { resolveReady = resolve; });
     const CARD = 'ytd-rich-item-renderer, ytd-video-renderer, ytd-compact-video-renderer, ytd-radio-renderer, ytd-compact-radio-renderer, ytd-playlist-renderer, ytd-compact-playlist-renderer, yt-lockup-view-model, ytd-reel-item-renderer, yt-shorts-lockup-view-model';
-    const PRIMARY = 'a#thumbnail[href], a#video-title[href], a#video-title-link[href], a.yt-lockup-view-model__content-image[href], .yt-lockup-metadata-view-model__title a[href], a.shortsLockupViewModelHostEndpoint[href]';
+    const PRIMARY = 'a#thumbnail[href], a#video-title[href], a#video-title-link[href], a.yt-lockup-view-model__content-image[href], a.ytLockupViewModelContentImage[href], a.YtLockupViewModelContentImage[href], .yt-lockup-metadata-view-model__title a[href], .ytLockupMetadataViewModelTitle a[href], .YtLockupMetadataViewModelTitle a[href], a.shortsLockupViewModelHostEndpoint[href]';
+    // CSS class names are case-sensitive. YouTube now uses capital Yt and
+    // SegmentModern as well as the older yt-prefixed watched-fill variants.
+    const WATCHED_FILL = 'ytd-thumbnail-overlay-resume-playback-renderer #progress, .ytThumbnailOverlayProgressBarHostWatchedProgressBarSegment, .YtThumbnailOverlayProgressBarHostWatchedProgressBarSegment, .ytThumbnailOverlayProgressBarHostWatchedProgressBarSegmentModern, .YtThumbnailOverlayProgressBarHostWatchedProgressBarSegmentModern';
+    const METADATA_TEXT = '.yt-content-metadata-view-model__metadata-text, .ytContentMetadataViewModelMetadataText, .YtContentMetadataViewModelMetadataText';
+    const METADATA_ROW = '.yt-content-metadata-view-model__metadata-row, .ytContentMetadataViewModelMetadataRow, .YtContentMetadataViewModelMetadataRow';
     let settings = F.normalizeSettings(), ready = false, scheduled = false, temporarilyPaused = false;
     const hidden = new Map();
     const dust = globalThis.YTFCDust.createController();
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     const style = document.createElement('style');
+    style.setAttribute('data-ytfc-style', '');
     style.textContent = '[data-ytfc-hidden] { display: none !important; } [data-ytfc-dissolving] { pointer-events: none !important; }';
     document.documentElement.appendChild(style);
 
@@ -48,7 +67,7 @@
     }
     function factsFor(card) {
         const url = primaryUrl(card);
-        const titleNode = ownNodes(card, '#video-title, #video-title-link, .yt-lockup-metadata-view-model__title, .shortsLockupViewModelHostMetadataTitle')[0];
+        const titleNode = ownNodes(card, '#video-title, #video-title-link, .yt-lockup-metadata-view-model__title, .ytLockupMetadataViewModelTitle, .YtLockupMetadataViewModelTitle, .shortsLockupViewModelHostMetadataTitle')[0];
         const title = titleNode?.textContent.trim() || '';
         const badges = ownNodes(card, 'ytd-badge-supported-renderer, yt-badge-view-model, .yt-thumbnail-overlay-badge-view-model__badge-text, ytd-thumbnail-overlay-time-status-renderer, .yt-badge-shape__text');
         const labels = badges.map(node => F.normalizeText(node.textContent));
@@ -64,19 +83,35 @@
         const live = labels.some(label => ['live', 'live now', 'в эфире', 'прямой эфир'].includes(label)) || !!ownNodes(card, '[overlay-style="LIVE"], .badge-style-type-live-now')[0];
         const upcoming = labels.some(label => ['upcoming', 'запланировано'].includes(label)) || !!ownNodes(card, '[overlay-style="UPCOMING"], ytd-thumbnail-overlay-upcoming-event-reminder-renderer')[0];
         let age = null;
-        // Never search arbitrary spans, titles, descriptions or accessibility labels.
-        const metadata = ownNodes(card, '#metadata-line > span, #metadata-line > yt-formatted-string, .yt-content-metadata-view-model__metadata-text');
+        // Only publication metadata. Never use card/title/thumbnail aria-labels.
+        const metadata = ownNodes(card, `#metadata-line span, #metadata-line yt-formatted-string, ${METADATA_TEXT}, yt-content-metadata-view-model span, ${METADATA_ROW}`);
+        const accessibleAges = [], visibleAges = [];
         for (const item of metadata) {
-            const parsed = F.parseAge(item.textContent);
-            if (parsed !== null) { age = parsed; break; }
+            if (item.closest('a, #channel-name, ytd-channel-name') || item.querySelector('a')) continue;
+            const row = item.closest(METADATA_ROW), host = item.closest('yt-content-metadata-view-model');
+            const rows = host ? [...host.querySelectorAll(METADATA_ROW)] : [];
+            if (row && rows.length > 1 && row !== rows.at(-1)) continue; // Channel-name row.
+            const fields = row ? [...row.querySelectorAll(METADATA_TEXT)] : [];
+            if (fields.length && item === row) continue; // Inspect fields, not their concatenated names.
+            const field = item.closest(METADATA_TEXT);
+            if (field && fields.length > 1 && field !== fields.at(-1)) continue;
+            const visibleAge = F.parsePublicationAge(item.textContent);
+            // Current YouTube emits "9 мес. назад" with a full publication-date
+            // label on that specific metadata field, not on the video card.
+            const accessibleAge = F.parseAge(item.getAttribute('aria-label'));
+            if (accessibleAge !== null) {
+                accessibleAges.push(visibleAge === null ? accessibleAge : Math.min(visibleAge, accessibleAge));
+            } else if (visibleAge !== null) visibleAges.push(visibleAge);
         }
+        const publicationAges = accessibleAges.length ? accessibleAges : visibleAges;
+        if (publicationAges.length) age = Math.min(...publicationAges);
         let duration = null;
         for (const badge of ownNodes(card, 'ytd-thumbnail-overlay-time-status-renderer #text, .yt-thumbnail-overlay-badge-view-model__badge-text, .yt-badge-shape__text')) {
             const parsed = F.parseDuration(badge.textContent);
             if (parsed !== null) { duration = parsed; break; }
         }
         let progress = null;
-        for (const bar of ownNodes(card, 'ytd-thumbnail-overlay-resume-playback-renderer #progress, .ytThumbnailOverlayProgressBarHostWatchedProgressBarSegment')) {
+        for (const bar of ownNodes(card, WATCHED_FILL)) {
             const parsed = F.parseProgress(bar.style.width);
             if (parsed !== null) { progress = parsed; break; }
         }
@@ -103,6 +138,7 @@
             hidden.set(element, entry);
             const animate = settings.animateHiding && !(settings.respectReducedMotion && reducedMotion?.matches);
             if (!previous) {
+                if (animate && document.hidden) replayRequested = true;
                 if (!animate || !dust.start(element, settings, () => {
                     if (hidden.get(element) !== entry) return;
                     entry.phase = 'hidden';
@@ -124,7 +160,7 @@
     }
     function processDOM() {
         scheduled = false;
-        if (!ready) return;
+        if (!ready || !alive) return;
         const page = context();
         for (const element of hidden.keys()) {
             if (!element.isConnected) { dust.cancel(element); hidden.delete(element); }
@@ -143,40 +179,126 @@
             const facts = factsFor(card);
             setHidden(card, active ? F.classify(facts, settings, page) : [], facts.title, `${primaryUrl(card)?.href || ''}|${facts.title}`);
         });
+        publishStatus();
     }
     function schedule() {
-        if (!scheduled) { scheduled = true; setTimeout(processDOM, 80); }
+        if (alive && !scheduled) { scheduled = true; scheduleTimer = setTimeout(processDOM, 80); }
     }
-    chrome.storage.local.get(F.DEFAULTS, data => { settings = F.normalizeSettings(data); ready = true; schedule(); });
-    chrome.storage.onChanged.addListener((changes, area) => {
-        if (area !== 'local' || !Object.keys(changes).some(key => key in F.DEFAULTS)) return;
-        const next = { ...settings };
+    function animationState() {
+        if (!settings.animateHiding) return 'off';
+        if (settings.respectReducedMotion && reducedMotion?.matches) return 'reduced';
+        if (document.hidden) return 'background';
+        return 'on';
+    }
+    function statusSnapshot() {
+        const visibleHidden = [...hidden].filter(([element]) => element.isConnected && !element.parentElement?.closest('[data-ytfc-hidden], [data-ytfc-dissolving]'));
+        const counts = {};
+        for (const [, item] of visibleHidden) for (const reason of item.reasons) counts[reason] = (counts[reason] || 0) + 1;
+        return { protocol: 2, version, contentRevision: F.CONTENT_REVISION, count: visibleHidden.length, counts, paused: temporarilyPaused, context: context(), animation: animationState(), items: visibleHidden.slice(0, 30).map(([, item]) => ({ title: item.title, reasons: item.reasons })) };
+    }
+    function publishStatus() {
+        if (!ports.size) return;
+        const status = statusSnapshot(), signature = JSON.stringify(status);
+        if (signature === lastPublished) return;
+        lastPublished = signature;
+        for (const port of ports) try { port.postMessage(status); } catch { ports.delete(port); }
+    }
+    function resetHidden() {
+        dust.cancelAll();
+        for (const element of hidden.keys()) element.removeAttribute('data-ytfc-hidden');
+        hidden.clear();
+    }
+    function requestReplay() {
+        if (!settings.animateHiding || temporarilyPaused || !settings.enabled) return;
+        if (document.hidden) { replayRequested = true; return; }
+        replayRequested = false;
+        resetHidden();
+        processDOM();
+    }
+    chrome.storage.local.get(F.DEFAULTS, data => {
+        if (!alive) return;
+        settings = F.normalizeSettings(data); ready = true; processDOM(); resolveReady();
+    });
+    const onStorage = (changes, area) => {
+        if (!alive || area !== 'local' || !Object.keys(changes).some(key => key in F.DEFAULTS)) return;
+        const next = { ...settings }, previouslyAnimated = settings.animateHiding;
+        const previouslyReduced = settings.respectReducedMotion && reducedMotion?.matches;
         for (const [key, change] of Object.entries(changes)) if (key in F.DEFAULTS) next[key] = change.newValue;
         settings = F.normalizeSettings(next);
+        if (!settings.animateHiding) replayRequested = false;
+        if (settings.animateHiding && (!previouslyAnimated || (previouslyReduced && !settings.respectReducedMotion))) requestReplay();
         processDOM();
-    });
-    new MutationObserver(schedule).observe(document.documentElement, {
+    };
+    chrome.storage.onChanged.addListener(onStorage);
+    cleanup.push(() => chrome.storage.onChanged.removeListener?.(onStorage));
+    const observer = new MutationObserver(schedule);
+    observer.observe(document.documentElement, {
         childList: true, subtree: true, characterData: true, attributes: true,
         attributeFilter: ['href', 'style', 'class', 'title', 'aria-label', 'is-shorts', 'overlay-style', 'content-id']
     });
-    ['yt-navigate-finish', 'yt-page-data-updated', 'popstate'].forEach(event => window.addEventListener(event, schedule));
-    reducedMotion?.addEventListener('change', processDOM);
+    function listen(target, event, handler, options) {
+        target.addEventListener(event, handler, options);
+        cleanup.push(() => target.removeEventListener(event, handler, options));
+    }
+    ['yt-navigate-finish', 'yt-page-data-updated', 'popstate'].forEach(event => listen(window, event, schedule));
+    if (reducedMotion) listen(reducedMotion, 'change', () => {
+        if (settings.animateHiding && settings.respectReducedMotion && !reducedMotion.matches) requestReplay();
+        processDOM();
+    });
     function finishVisuals() {
+        if (!dust.size()) return;
         dust.cancelAll();
         for (const entry of hidden.values()) if (entry.phase === 'pending') entry.phase = 'hidden';
         processDOM();
     }
-    window.addEventListener('scroll', finishVisuals, { passive: true, capture: true });
-    window.addEventListener('resize', finishVisuals, { passive: true });
-    document.addEventListener('visibilitychange', () => { if (document.hidden) finishVisuals(); });
-    chrome.runtime.onMessage.addListener((message, sender, respond) => {
-        if (message?.type === 'feedStatus' || message?.type === 'togglePreview') {
-            if (message.type === 'togglePreview') temporarilyPaused = !temporarilyPaused;
-            processDOM();
-            const visibleHidden = [...hidden].filter(([element]) => !element.parentElement?.closest('[data-ytfc-hidden], [data-ytfc-dissolving]'));
-            const counts = {};
-            for (const [, item] of visibleHidden) for (const reason of item.reasons) counts[reason] = (counts[reason] || 0) + 1;
-            respond({ count: visibleHidden.length, counts, paused: temporarilyPaused, context: context(), items: visibleHidden.slice(0, 30).map(([, item]) => ({ title: item.title, reasons: item.reasons })) });
-        }
+    // YouTube dispatches scroll events from carousels/progress UI as well. Only an
+    // actual viewport scroll may cancel a fixed-position particle layer.
+    let scrollX = window.scrollX, scrollY = window.scrollY;
+    listen(window, 'scroll', () => {
+        if (window.scrollX === scrollX && window.scrollY === scrollY) return;
+        scrollX = window.scrollX; scrollY = window.scrollY; finishVisuals();
+    }, { passive: true });
+    let width = window.innerWidth, height = window.innerHeight;
+    listen(window, 'resize', () => {
+        if (width === window.innerWidth && height === window.innerHeight) return;
+        width = window.innerWidth; height = window.innerHeight; finishVisuals();
+    }, { passive: true });
+    listen(document, 'visibilitychange', () => {
+        if (document.hidden) finishVisuals();
+        else if (replayRequested) requestReplay();
+        publishStatus();
     });
+    const onMessage = (message, sender, respond) => {
+        if (!alive || !['feedStatus', 'togglePreview', 'replayAnimation'].includes(message?.type)) return;
+        const answer = () => {
+            if (!alive) return;
+            if (message.type === 'togglePreview') temporarilyPaused = !temporarilyPaused;
+            if (message.type === 'replayAnimation') requestReplay();
+            processDOM(); respond(statusSnapshot());
+        };
+        if (!ready) { bootReady.then(answer); return true; }
+        answer();
+    };
+    chrome.runtime.onMessage.addListener(onMessage);
+    cleanup.push(() => chrome.runtime.onMessage.removeListener?.(onMessage));
+    const onConnect = port => {
+        if (!alive || port.name !== 'ytfc-feed') return;
+        ports.add(port);
+        port.onDisconnect.addListener(() => ports.delete(port));
+        bootReady.then(() => {
+            if (!alive || !ports.has(port)) return;
+            try { port.postMessage(statusSnapshot()); } catch { ports.delete(port); }
+        });
+    };
+    chrome.runtime.onConnect?.addListener(onConnect);
+    cleanup.push(() => chrome.runtime.onConnect?.removeListener(onConnect));
+    const instance = { version, contentRevision: F.CONTENT_REVISION, alive: true, dispose() {
+        if (!alive) return;
+        alive = false; instance.alive = false;
+        clearTimeout(scheduleTimer); observer.disconnect(); resetHidden(); style.remove();
+        for (const stop of cleanup) try { stop(); } catch { /* Invalidated extension context. */ }
+        for (const port of ports) try { port.disconnect(); } catch { /* Already closed. */ }
+        ports.clear(); resolveReady();
+    } };
+    globalThis.__YTFCContent = instance;
 })();

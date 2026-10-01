@@ -46,7 +46,7 @@
                     onFinish();
                 };
                 // Prefer thumbnail fragments, never copy interactive HTML or play media.
-                const image = element.querySelector('img');
+                const image = element.querySelector('a#thumbnail img, .yt-lockup-view-model__content-image img, img.yt-core-image') || element.querySelector('img');
                 const imageRect = image?.getBoundingClientRect();
                 const source = image?.currentSrc || image?.src || '';
                 const imageURL = /^https?:\/\//i.test(source) && imageRect?.width > 4 && imageRect?.height > 4 ? source : '';
@@ -60,7 +60,7 @@
                     const x = left + col * cellWidth, y = top + row * cellHeight;
                     Object.assign(particle.style, {
                         position: 'absolute', left: `${x}px`, top: `${y}px`, width: `${cellWidth * .8}px`, height: `${cellHeight * .8}px`,
-                        borderRadius: '3px', opacity: '0', backgroundColor: ['#e8edf5', '#92b7cf', '#ef5266', '#8df0ca'][(row + col) % 4],
+                        borderRadius: '1px', opacity: '0', backgroundColor: ['#f5f5f5', '#aaaaaa', '#ff333d', '#646464'][(row + col) % 4],
                         ...(imageURL ? { backgroundImage: `url(${JSON.stringify(imageURL)})`, backgroundSize: `${area.width}px ${area.height}px`, backgroundPosition: `${area.left - x}px ${area.top - y}px` } : {})
                     });
                     group.appendChild(particle);
